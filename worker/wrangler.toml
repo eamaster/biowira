@@ -1,0 +1,11 @@
+name = "biowira-api"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+account_id = "767ce92674d0bd477eef696c995faf16"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "biowira-db"
+database_id = "7da18b7d-5f22-4648-b3af-e3d9022e7fc4"
+

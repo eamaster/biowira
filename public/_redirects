@@ -1,0 +1,7 @@
+# BioWira Cloudflare Pages Routing Rules
+# 1. API proxy fallback to Cloudflare Worker
+/api/*  https://biowira-api.smah0085.workers.dev/api/:splat  200
+
+# 2. SPA fallback for HTML5 History Mode (Vue Router)
+/*      /index.html                                          200
+

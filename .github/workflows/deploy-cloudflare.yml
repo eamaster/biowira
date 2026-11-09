@@ -1,0 +1,63 @@
+name: Deploy to Cloudflare
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  deploy-pages:
+    name: Deploy Frontend to Cloudflare Pages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: /api/v1
+          VITE_WEATHER_API_BASE_URL: https://api.open-meteo.com/v1
+          VITE_USE_MOCK: 'false'
+          VITE_APP_VERSION: 1.0.0
+          VITE_SESSION_ENABLED: 'true'
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: 767ce92674d0bd477eef696c995faf16
+          command: pages deploy dist --project-name=biowira --branch=master --commit-dirty=true
+
+  deploy-worker:
+    name: Deploy Serverless API Worker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Worker dependencies
+        working-directory: worker
+        run: npm ci || npm install
+
+      - name: Deploy Worker to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: 767ce92674d0bd477eef696c995faf16
+          workingDirectory: worker
+          command: deploy
