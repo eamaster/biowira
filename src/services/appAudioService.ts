@@ -155,8 +155,8 @@ function _fadeIn(el: HTMLAudioElement, targetVol: number): void {
 
   function step(now: number) {
     const elapsed = now - startTime
-    const progress = Math.min(elapsed / FADE_DURATION, 1)
-    el.volume = targetVol * progress
+    const progress = Math.max(0, Math.min(elapsed / FADE_DURATION, 1))
+    el.volume = Math.max(0, Math.min(1, targetVol * progress))
     if (progress < 1) {
       _fadeTimer = requestAnimationFrame(step)
     }
@@ -313,7 +313,7 @@ export function setSfxEnabled(enabled: boolean): void {
 export function setMusicVolume(vol: number): void {
   _musicVolume = Math.max(0, Math.min(1, vol))
   if (_musicEl && !_musicEl.paused) {
-    _musicEl.volume = _effectiveMusicVolume()
+    _musicEl.volume = Math.max(0, Math.min(1, _effectiveMusicVolume()))
   }
 }
 
@@ -329,7 +329,7 @@ export function setSfxVolume(vol: number): void {
 export function setNarrationActive(active: boolean): void {
   _narrationActive = active
   if (_musicEl && !_musicEl.paused) {
-    _musicEl.volume = _effectiveMusicVolume()
+    _musicEl.volume = Math.max(0, Math.min(1, _effectiveMusicVolume()))
   }
 }
 
@@ -358,7 +358,7 @@ export function playSfx(key: BioWiraSfxKey): void {
     source.src = src
     el.appendChild(source)
   }
-  el.volume = Math.min(1, (asset.baseVolume ?? 1) * _sfxVolume)
+  el.volume = Math.max(0, Math.min(1, (asset.baseVolume ?? 1) * _sfxVolume))
   el.preload = 'auto'
 
   const promise = el.play()

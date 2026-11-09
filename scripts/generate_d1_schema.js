@@ -365,12 +365,15 @@ INSERT OR IGNORE INTO image (image_id, url, title, author_name, source_name, lic
   (9, '/assets/animals/mousedeer.webp', 'Lesser Mousedeer in forest floor', 'Belum-Temengor Reserve', 'Forestry Dept', 'CC BY-SA 4.0'),
   (10, '/assets/animals/dugong.webp', 'Dugong in Johor seagrass meadow', 'MareCet Malaysia', 'Marine Mammal Research', 'CC BY-SA 4.0'),
   (11, '/assets/animals/crocodile.webp', 'Estuarine Crocodile basking', 'Sarawak River Reserve', 'Sarawak Forestry', 'CC BY-SA 4.0'),
-  (12, '/assets/animals/sea-turtle-hawksbill.webp', 'Hawksbill Turtle on coral reef', 'Tioman Marine Park', 'Dept of Fisheries', 'CC BY-SA 4.0');
+  (12, '/assets/animals/sea-turtle-hawksbill.webp', 'Hawksbill Turtle on coral reef', 'Tioman Marine Park', 'Dept of Fisheries', 'CC BY-SA 4.0'),
+  (13, '/assets/discovery-animals/larut-torrent-frog.webp', 'Larut Torrent Frog on mountain stream', 'BioWira Conservation Team', 'Forestry Dept Malaysia', 'CC BY-SA 4.0'),
+  (14, '/assets/discovery-animals/asian-common-toad.webp', 'Asian Common Toad in forest leaf litter', 'BioWira Conservation Team', 'Borneo Wildlife Dept', 'CC BY-SA 4.0'),
+  (15, '/assets/discovery-animals/wallaces-flying-frog.webp', 'Wallace''s Flying Frog gliding canopy', 'BioWira Conservation Team', 'Sarawak Forestry', 'CC BY-SA 4.0');
 
 INSERT OR IGNORE INTO animal (animal_id, common_name, scientific_name, group_id, diet, lifespan, description, conservation_status_id, image_url, avatar_path, image_id) VALUES
   (1, 'Malayan Tiger', 'Panthera tigris jacksoni', 1, 'Carnivore', '15–20 yrs', 'The Malayan Tiger is Malaysia national animal. It has brilliant orange fur with black stripes — and no two tigers have the same stripe pattern!', 5, '/assets/animals/malayan-tiger.webp', '/avatars/tiger.png', 1),
   (2, 'Hornbill', 'Buceros rhinoceros', 2, 'Omnivore', '35–40 yrs', 'The Rhinoceros Hornbill is the iconic state bird of Sarawak. It features a bright red-orange horn-like casque resting atop its large beak.', 3, '/assets/animals/hornbill.webp', '/avatars/hornbill.png', 2),
-  (3, 'Orangutan', 'Pongo pygmaeus', 1, 'Herbivore', '35–45 yrs', 'Orangutan means "person of the forest" in Malay. They are one of humanity closest cousins and make cozy leafy nests in high tree canopies each night.', 5, '/assets/animals/orangutan.webp', '/avatars/orangutan.png', 3),
+  (3, 'Bornean Orangutan', 'Pongo pygmaeus', 1, 'Omnivore', '35–45 yrs', 'Orangutan means "person of the forest" in Malay. They are one of humanity closest cousins and make cozy leafy nests in high tree canopies each night.', 5, '/assets/animals/orangutan.webp', '/avatars/orangutan.png', 3),
   (4, 'Malayan Tapir', 'Tapirus indicus', 1, 'Herbivore', '25–30 yrs', 'With its unique black-and-white color blocking, the Malayan Tapir uses its flexible snout like a snorkel when swimming and for plucking tender shoots.', 4, '/assets/animals/tapir.webp', '/avatars/tapir.png', 4),
   (5, 'Proboscis Monkey', 'Nasalis larvatus', 1, 'Herbivore', '15–20 yrs', 'Found only on Borneo island, male proboscis monkeys have enormous noses that echo their calls through mangrove rivers and make them champion swimmers.', 4, '/assets/animals/proboscis-monkey.webp', '/avatars/proboscis.png', 5),
   (6, 'Sun Bear', 'Helarctos malayanus', 1, 'Omnivore', '20–25 yrs', 'The Sun Bear is the smallest bear in the world! It has a distinctive gold horseshoe crescent on its chest and a super long tongue for scooping honey.', 3, '/assets/animals/sun-bear.webp', '/avatars/sunbear.png', 6),
@@ -379,7 +382,10 @@ INSERT OR IGNORE INTO animal (animal_id, common_name, scientific_name, group_id,
   (9, 'Lesser Mousedeer', 'Tragulus kanchil', 1, 'Herbivore', '10–12 yrs', 'The mouse-deer (Sang Kancil) is legendary in Malaysian folklore for its wisdom and trickery. It is one of the smallest hoofed mammals on the planet.', 1, '/assets/animals/mousedeer.webp', '/avatars/mousedeer.png', 9),
   (10, 'Dugong', 'Dugong dugon', 1, 'Herbivore', '50–70 yrs', 'Often called sea cows, gentle dugongs graze peacefully on underwater seagrass meadows in the warm coastal waters of Johor and Sabah.', 3, '/assets/animals/dugong.webp', '/avatars/dugong.png', 10),
   (11, 'Estuarine Crocodile', 'Crocodylus porosus', 3, 'Carnivore', '70+ yrs', 'The Saltwater Crocodile is the largest living reptile in the world, with prehistoric armor and the strongest recorded bite force on Earth.', 1, '/assets/animals/crocodile.webp', '/avatars/crocodile.png', 11),
-  (12, 'Hawksbill Sea Turtle', 'Eretmochelys imbricata', 3, 'Carnivore', '50–60 yrs', 'Famous for its distinctive bird-like hooked beak and beautiful amber shell, this turtle keeps coral reefs healthy by eating sea sponges.', 5, '/assets/animals/sea-turtle-hawksbill.webp', '/avatars/hawksbill.png', 12);
+  (12, 'Hawksbill Sea Turtle', 'Eretmochelys imbricata', 3, 'Carnivore', '50–60 yrs', 'Famous for its distinctive bird-like hooked beak and beautiful amber shell, this turtle keeps coral reefs healthy by eating sea sponges.', 5, '/assets/animals/sea-turtle-hawksbill.webp', '/avatars/hawksbill.png', 12),
+  (13, 'Larut Torrent Frog', 'Limnonectes larutensis', 4, 'Insectivore', '5–8 yrs', 'The Larut Torrent Frog lives near rushing, fast-flowing mountain streams in the Larut Hills of Perak. Its webbed feet and muscular legs allow it to leap between slippery wet rocks without falling.', 3, '/assets/discovery-animals/larut-torrent-frog.webp', '/assets/discovery-animals/larut-torrent-frog.webp', 13),
+  (14, 'Asian Common Toad', 'Duttaphrynus melanostictus', 4, 'Insectivore', '5–10 yrs', 'The Asian Common Toad is a common nocturnal amphibian found in rainforest undergrowth, gardens, and near forest streams across Malaysia, eating lots of insects every night.', 1, '/assets/discovery-animals/asian-common-toad.webp', '/assets/discovery-animals/asian-common-toad.webp', 14),
+  (15, 'Wallace''s Flying Frog', 'Rhacophorus nigropalmatus', 4, 'Carnivore', '5–8 yrs', 'Wallace''s Flying Frog can glide through the air using huge webbed feet and flaps of skin on its limbs, gliding from tree to tree in the tropical rainforest.', 1, '/assets/discovery-animals/wallaces-flying-frog.webp', '/assets/discovery-animals/wallaces-flying-frog.webp', 15);
 
 -- Animal occurrences (sightings for Discover map)
 INSERT OR IGNORE INTO animal_occurrence (animal_id, latitude, longitude, location_name, observed_at, notes) VALUES
@@ -395,7 +401,10 @@ INSERT OR IGNORE INTO animal_occurrence (animal_id, latitude, longitude, locatio
   (9, 4.45, 102.30, 'Taman Negara, Pahang', '2024-05-14', 'Sighting near forest walking trail'),
   (10, 2.25, 104.10, 'Sibu Island Seagrass Beds, Johor', '2024-06-19', 'Acoustic monitoring detected feeding'),
   (11, 1.55, 110.50, 'Batang Lupar River, Sarawak', '2024-03-08', 'Adult observed basking at low tide'),
-  (12, 2.82, 104.17, 'Tioman Island Marine Park, Pahang', '2024-07-15', 'Observed feeding on sponges near reef wall');
+  (12, 2.82, 104.17, 'Tioman Island Marine Park, Pahang', '2024-07-15', 'Observed feeding on sponges near reef wall'),
+  (13, 4.86, 100.75, 'Bukit Larut (Maxwell Hill), Perak', '2024-05-10', 'Spotted resting on mossy boulder near cascading waterfall'),
+  (14, 3.15, 101.70, 'FRIM Forest Reserve, Selangor', '2024-06-12', 'Active in moist rainforest leaf litter after dusk'),
+  (15, 1.60, 110.15, 'Kubah National Park, Sarawak', '2024-08-20', 'Gliding from high canopy to lower branch');
 
 -- Threats
 INSERT OR IGNORE INTO threat_detail (animal_id, threat_category_id, explanation, priority) VALUES
@@ -411,7 +420,10 @@ INSERT OR IGNORE INTO threat_detail (animal_id, threat_category_id, explanation,
   (9, 2, 'Forest edge clearance and feral predator attacks.', 1),
   (10, 4, 'Damage to seagrass beds by boat propellers and coastal siltation.', 1),
   (11, 5, 'Hunting and conflict near human riverside settlements.', 1),
-  (12, 3, 'Coral bleaching and rising sand temperatures affecting hatchling gender.', 1);
+  (12, 3, 'Coral bleaching and rising sand temperatures affecting hatchling gender.', 1),
+  (13, 2, 'Water pollution and disturbance to clean mountain stream habitats.', 1),
+  (14, 2, 'Agricultural clearing and loss of moist microclimates.', 1),
+  (15, 2, 'Logging of tall primary emergent trees required for gliding.', 1);
 
 -- Habitats
 INSERT OR IGNORE INTO habitat_detail (animal_id, habitat_category_id, priority, emoji) VALUES
@@ -426,7 +438,10 @@ INSERT OR IGNORE INTO habitat_detail (animal_id, habitat_category_id, priority, 
   (9, 1, 1, '🍄'),
   (10, 5, 1, '🌊'),
   (11, 3, 1, '🐊'),
-  (12, 5, 1, '🪸');
+  (12, 5, 1, '🪸'),
+  (13, 1, 1, '🐸'),
+  (14, 1, 1, '🐸'),
+  (15, 1, 1, '🐸');
 
 -- Fun Facts
 INSERT OR IGNORE INTO animal_fun_fact (animal_fun_fact_id, animal_id, emoji, fact_text, fact_image_url, fact_order, level_id) VALUES

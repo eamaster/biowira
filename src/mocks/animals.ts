@@ -79,11 +79,11 @@ export const MOCK_ANIMALS: Animal[] = [
   {
     id: 'orangutan',
     visualKey: 'orangutan',
-    commonName: 'Orangutan',
+    commonName: 'Bornean Orangutan',
     scientificName: 'Pongo pygmaeus',
     category: AnimalCategory.Mammals,
     habitat: HabitatZone.Rainforest,
-    diet: 'Herbivore',
+    diet: 'Omnivore',
     lifespan: '35–45 yrs',
     conservationStatus: ConservationStatus.CriticallyEndangered,
     conservationReason: 'Deforestation',
@@ -341,6 +341,78 @@ export const MOCK_ANIMALS: Animal[] = [
     occurrences: [
       { id: 'occ-hawksbill-1', latitude: 2.1, longitude: 102.1, locationName: 'Melaka (Padang Kemunting)', observedAt: '2023-06-25', notes: 'Key nesting site in Peninsular Malaysia' },
       { id: 'occ-hawksbill-2', latitude: 6.5, longitude: 116.7, locationName: 'Tun Sakaran Marine Park', observedAt: '2023-09-08' }
+    ]
+  },
+  {
+    id: 'larut-torrent-frog',
+    visualKey: 'larut-torrent-frog',
+    commonName: 'Larut Torrent Frog',
+    scientificName: 'Limnonectes larutensis',
+    category: AnimalCategory.Amphibians,
+    habitat: HabitatZone.Rainforest,
+    diet: 'Insectivore',
+    lifespan: '5–8 yrs',
+    conservationStatus: ConservationStatus.Vulnerable,
+    conservationReason: 'Stream Disturbance & Water Pollution',
+    conservationExplanation: 'Lives near rushing mountain streams in Bukit Larut. Needs clean, undisturbed forest waterways.',
+    description: 'The Larut Torrent Frog lives near rushing mountain streams in Perak. Muscular legs let it grip slippery rocks.',
+    funFact: 'Torrent frogs have specialized sticky toe pads to grip rocks in raging waterfalls!',
+    iconEmoji: '🐸',
+    markerSpriteKey: 'frog',
+    mapPosition: {
+      desktop: { x: 16, y: 32 },
+      mobile: { x: 30, y: 18 },
+    },
+    occurrences: [
+      { id: 'occ-frog-1', latitude: 4.86, longitude: 100.75, locationName: 'Bukit Larut (Maxwell Hill)', observedAt: '2023-05-10' }
+    ]
+  },
+  {
+    id: 'asian-common-toad',
+    visualKey: 'asian-common-toad',
+    commonName: 'Asian Common Toad',
+    scientificName: 'Duttaphrynus melanostictus',
+    category: AnimalCategory.Amphibians,
+    habitat: HabitatZone.Rainforest,
+    diet: 'Insectivore',
+    lifespan: '5–10 yrs',
+    conservationStatus: ConservationStatus.LeastConcern,
+    conservationReason: '',
+    conservationExplanation: 'Common throughout Malaysia forest edges and gardens.',
+    description: 'The Asian Common Toad is a nocturnal amphibian eating beetles, ants, and termites every night.',
+    funFact: 'Toads have warty, dry skin and can puff up their bodies to look much bigger!',
+    iconEmoji: '🐸',
+    markerSpriteKey: 'toad',
+    mapPosition: {
+      desktop: { x: 20, y: 40 },
+      mobile: { x: 36, y: 24 },
+    },
+    occurrences: [
+      { id: 'occ-toad-1', latitude: 3.15, longitude: 101.7, locationName: 'FRIM Forest Reserve', observedAt: '2023-06-12' }
+    ]
+  },
+  {
+    id: 'wallaces-flying-frog',
+    visualKey: 'wallaces-flying-frog',
+    commonName: "Wallace's Flying Frog",
+    scientificName: 'Rhacophorus nigropalmatus',
+    category: AnimalCategory.Amphibians,
+    habitat: HabitatZone.Rainforest,
+    diet: 'Carnivore',
+    lifespan: '5–8 yrs',
+    conservationStatus: ConservationStatus.LeastConcern,
+    conservationReason: '',
+    conservationExplanation: 'A canopy dweller adapted to high rainforest trees.',
+    description: "Wallace's Flying Frog glides through the air using enormous webbed feet and flaps of skin.",
+    funFact: 'This frog can glide over 15 metres from tree branch to tree branch!',
+    iconEmoji: '🐸',
+    markerSpriteKey: 'flying-frog',
+    mapPosition: {
+      desktop: { x: 70, y: 60 },
+      mobile: { x: 50, y: 70 },
+    },
+    occurrences: [
+      { id: 'occ-ffrog-1', latitude: 1.6, longitude: 110.15, locationName: 'Kubah National Park', observedAt: '2023-08-20' }
     ]
   },
 ]

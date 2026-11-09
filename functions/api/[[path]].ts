@@ -4,3 +4,4 @@ export const onRequest: PagesFunction = async (context) => {
   const newRequest = new Request(targetUrl.toString(), context.request)
   return fetch(newRequest)
 }
+

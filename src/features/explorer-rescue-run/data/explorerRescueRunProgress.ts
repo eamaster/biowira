@@ -65,7 +65,11 @@ export function normalizeExplorerRescueCompletedIds(
 
   for (const key of completedKeys) {
     const run = findExplorerRescueRunByAnimalId(key)
-    if (run) out.add(run.id)
+    if (run) {
+      out.add(run.id)
+    } else if (journalRecords.length === 0) {
+      out.add(key)
+    }
   }
 
   for (const runId of collectExplorerRescueCompletedRunIdsFromRecords(journalRecords)) {
