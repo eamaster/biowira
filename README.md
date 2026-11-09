@@ -3,10 +3,12 @@
 **BioWira** is a child-friendly **Progressive Web App (PWA)** that helps young learners (age 6–12) discover Malaysian rainforest wildlife through a pixel-art UI, animal discovery, an interactive drawing canvas, gamified quizzes, nature missions, Eco-Comic storybooks, an AI animal companion chatbot, the **Explorer Rescue Run** mini-game, and a collectible **Game Journal** — all unified by a **Leaf Points** progression system across **10 product epics**.
 
 **Course:** FIT5120 Industry Experience Studio — Monash University  
-**Production URL:** `https://biowira.dpdns.org`  
-**Backend API:** `https://api.biowira.dpdns.org` (same-origin via CloudFront in production)
+**Production URL:** `https://biowira.pages.dev`  
+**Backend API:** `https://biowira.pages.dev/api/v1` (Same-origin via Cloudflare Pages proxy)  
+**Direct Worker API:** `https://biowira-api.smah0085.workers.dev`  
+**Database:** Cloudflare D1 Edge SQL Database (`biowira-db`)
 
-**Stack:** Vue 3 · TypeScript · Vite · Pinia · Vue Router · SCSS (tokens) · Phaser 3 · PWA (vite-plugin-pwa / Workbox) · Vitest · Playwright
+**Stack:** Vue 3 · TypeScript · Vite · Pinia · Vue Router · SCSS (tokens) · Phaser 3 · PWA (vite-plugin-pwa / Workbox) · Cloudflare Pages · Cloudflare Workers (Hono) · Cloudflare D1 · Vitest · Playwright
 
 ---
 
@@ -147,13 +149,11 @@ The primary persona is a **young Malaysian learner**: large touch targets, simpl
 │  fetch() wrapper — attaches X-Session-Token from localStorage            │
 │  joinApiUrl() prevents doubled /api/v1 prefixes                          │
 ├──────────────────────────────────────────────────────────────────────────┤
-│  storageService  src/services/storageService.ts                          │
-│  Single abstraction over localStorage (all keys in STORAGE_KEYS)         │
-├──────────────────────────────────────────────────────────────────────────┤
-│  Domain models + DTO mappers  src/domain/                                │
-│  enums · animal · funFact · quiz · session · mission · user              │
-│  funFactAccess · funFactSelection · profileApi.dto · gameJournal         │
-│  imageAttribution · animalTraitResolution · appAudio · animalChat        │
+│  Cloudflare Serverless Edge Infrastructure                               │
+│  Pages: https://biowira.pages.dev  (Frontend PWA bundle)                 │
+│  Worker API: Hono.js on Cloudflare Workers edge isolates                 │
+│  Database: Cloudflare D1 (biowira-db) distributed edge SQLite            │
+│  AI integrations: Google Gemini (Chatbot) + ElevenLabs TTS (Narration)   │
 ├──────────────────────────────────────────────────────────────────────────┤
 │  Phaser 3 (ExplorerRescueScene)                                          │
 │  Mounted inside ExplorerRescueGamePage via createExplorerRescueGame()    │
@@ -1343,6 +1343,12 @@ All endpoints live under `/api/v1/`. The `apiClient` reads `VITE_API_BASE_URL` a
 |--------|----------|
 | `GET` | `/badges` | All badges (earned + locked) for the active session |
 
+### Chatbot (Google Gemini 1.5 Flash)
+
+| Method | Endpoint | Body | Description |
+|--------|----------|------|-------------|
+| `POST` | `/chat/message` | `{ message, animalName, animalCategory, profileNickname }` | Returns `{ reply }` tailored to the child's age with guardrails and conservation focus. |
+
 ### TTS (ElevenLabs cached narration)
 
 | Method | Endpoint | Notes |
@@ -1355,16 +1361,15 @@ All endpoints live under `/api/v1/`. The `apiClient` reads `VITE_API_BASE_URL` a
 1. `AnimalProfileSheet.vue` builds narration text via `buildAnimalNarrationText(animal)` and passes it to `useNarrationAudio(audioText)`.
 2. When the user presses Listen & Learn, `useNarrationAudio` calls `generateNarrationTts()` in `narrationService.ts`.
 3. The frontend POSTs `{ text, voiceId, modelId, speed }` to `POST /api/v1/tts/generate`.
-4. The backend returns cached or freshly generated JSON metadata including `audioUrl` and word-level `timings`.
-5. `resolveNarrationAudioUrl()` converts the absolute `audioUrl` to a same-origin relative path (e.g. `/api/v1/tts/audio/{hash}`) so Vite's dev proxy and CloudFront in production both resolve it correctly.
+4. The Cloudflare Worker backend returns cached or freshly generated JSON metadata including `audioUrl` and word-level `timings`.
+5. `resolveNarrationAudioUrl()` converts the absolute `audioUrl` to a same-origin relative path (e.g. `/api/v1/tts/audio/{hash}`) so Pages proxy routes resolve it correctly.
 6. The frontend creates `new Audio(resolvedUrl)` and plays it.
 7. Word highlighting uses backend `timings` (seconds converted to ms) for precise synchronization.
 
 **Security notes:**
-- No ElevenLabs API key exists anywhere in the frontend.
-- No AWS/Polly integration in the frontend.
-- The backend owns all ElevenLabs credentials and the PostgreSQL TTS cache.
-- The PWA service worker uses `NetworkOnly` for all `/api/*` routes — audio responses are never cached by the SW.
+- No ElevenLabs or Gemini API key exists anywhere in the frontend.
+- Cloudflare Worker securely owns all secret bindings (`GEMINI_API_KEY`, `ELEVENLABS_API_KEY`) and D1 TTS cache.
+- The PWA service worker uses `NetworkOnly` for all `/api/*` routes — audio and chat responses are never cached by the SW.
 
 ---
 
@@ -1585,49 +1590,61 @@ await page.goto('/games/explorer-rescue-run/result')
 
 ## 26. CI/CD & Deployment
 
-### GitHub Actions workflow (`.github/workflows/deploy_to_aws.yml`)
+### Cloudflare Serverless Deployment (`.github/workflows/deploy_cloudflare.yml`)
 
-Triggers on push to `master`, `iteration1`, `iteration2`, `iteration3`, or manual dispatch.
+The primary production CI/CD pipeline triggers on push to `master` and pull requests targeting `master`. It builds and validates both the Worker API and the Vue 3 frontend in parallel before deploying to Cloudflare:
 
-**Deploy matrix:**
+```
+push to master ──────────────────────────────┐
+                                              │
+              ┌───────────────────────────────┴──────────────────────────────┐
+              ▼                                                              ▼
+   [Job: Build & Verify Worker]                                 [Job: Build & Verify Frontend]
+   • Node.js 24 setup                                           • Node.js 24 setup
+   • cd worker && npm ci                                        • npm ci
+   • npm run type-check (tsc --noEmit)                          • npm run build (PWA & precache)
+   • Deploy Worker via wrangler-action                          • Deploy Pages via wrangler-action
+   (https://biowira-api.smah0085.workers.dev)                   (https://biowira.pages.dev)
+```
 
-| Branch | S3 prefix | Vite `base` | Public URL |
-|--------|-----------|------------|------------|
-| `master` | `current/` | `/` | `https://biowira.dpdns.org/` |
-| `iteration1` | `iteration1/` | `/iteration1/` | `https://biowira.dpdns.org/iteration1/` |
-| `iteration2` | `iteration2/` | `/iteration2/` | `https://biowira.dpdns.org/iteration2/` |
-| `iteration3` | `iteration3/` | `/iteration3/` | `https://biowira.dpdns.org/iteration3/` |
+**Jobs in Pipeline:**
+1. **`Build & Verify Worker API`**:
+   - Runs TypeScript strict validation on Worker endpoints.
+   - Deploys `worker/` to Cloudflare Workers edge network using `cloudflare/wrangler-action@v3`.
+2. **`Build & Verify Frontend`**:
+   - Compiles TypeScript and builds Vite PWA bundle (`dist/`).
+   - Generates Workbox precache manifest for offline operation.
+   - Deploys static build to Cloudflare Pages project **`biowira`** using `cloudflare/wrangler-action@v3`.
 
-**Steps:**
-1. Checkout → Node 20 setup
-2. Derive `DEPLOY_PREFIX` and `VITE_BASE_PATH` from branch name
-3. `npm ci` + `npm run build` (injects `VITE_MAPBOX_ACCESS_TOKEN`, `VITE_API_BASE_URL`, etc.)
-4. Configure AWS credentials (`ap-southeast-5`)
-5. `aws s3 sync dist/ s3://$BUCKET/$PREFIX --delete`
-6. CloudFront invalidation for `/$PREFIX*`
+### Required GitHub Secrets & Variables
 
-### Required GitHub Secrets / Variables
+| Secret / Variable | Type | Description |
+|---|---|---|
+| `CLOUDFLARE_API_TOKEN` | Secret | Cloudflare API token with `Workers Scripts:Edit`, `Pages:Edit`, `D1:Edit` permissions |
+| `CLOUDFLARE_ACCOUNT_ID` | Secret | Cloudflare Account ID (`767ce92674d0bd477eef696c995faf16`) |
+| `VITE_MAPBOX_ACCESS_TOKEN` | Secret | Mapbox access token for occurrence mapping in `/discover` |
+| `VITE_API_BASE_URL` | Variable | API path prefix (defaults to `/api/v1` in production) |
 
-| Secret | Description |
-|--------|-------------|
-| `AWS_ACCESS_KEY_ID` | IAM key for S3 + CloudFront |
-| `AWS_SECRET_ACCESS_KEY` | IAM secret |
-| `AWS_S3_BUCKET` | Target S3 bucket name |
-| `DISTRIBUTION` | CloudFront distribution ID |
-| `VITE_MAPBOX_ACCESS_TOKEN` | Mapbox token (injected at build time) |
+### Cloudflare Pages Routing (`public/_routes.json`)
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `VITE_API_BASE_URL` | `/api/v1` | API base; override if backend path changes |
-| `VITE_APP_VERSION` | `0.1.0` | Displayed in branding |
-| `VITE_SESSION_ENABLED` | `true` | Keep `true` in production |
+Cloudflare Pages proxies backend traffic directly to the Worker:
+```json
+{
+  "version": 1,
+  "include": ["/*"],
+  "exclude": ["/api/*"]
+}
+```
+* Requests matching `/api/*` are intercepted by the edge Worker without leaving the Cloudflare network.
+* Static requests are served directly from Cloudflare Pages CDN edge caches.
 
-### PWA / CloudFront routing
+---
 
-- All `/api/*` requests bypass CloudFront's SPA routing and go directly to the backend origin
-- The SW never caches `/api/*` — `NetworkOnly` runtime rule in Workbox
-- `navigateFallbackDenylist: [/^\/iteration\d+/]` prevents the root SW from intercepting branch-deployment navigations
-- `cleanupOutdatedCaches: true` evicts stale JS bundles after each deploy
+### Legacy AWS Workflow (`.github/workflows/deploy_to_aws.yml`)
+
+Retained as an optional backup pipeline for AWS S3 + CloudFront deployments:
+- Triggers on push to `master`, `iteration1`, `iteration2`, `iteration3`.
+- Syncs `dist/` to S3 bucket and issues CloudFront invalidations.
 
 ---
 

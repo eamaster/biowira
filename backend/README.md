@@ -1,143 +1,245 @@
-# BioWira Backend API
+# BioWira Backend Services
 
-A gamified wildlife education backend API built with **ASP.NET Core 9.0 Minimal APIs**. BioWira encourages children to learn about wildlife conservation through interactive weather-adaptive missions, quizzes, progression systems, and achievement badges.
+Welcome to the **BioWira Backend Documentation**. BioWira provides a child-friendly, gamified wildlife conservation education platform designed for young learners (ages 6–12).
 
-## Tech Stack
+The backend architecture features a modern, ultra-low-latency **Cloudflare Serverless API** powered by **Cloudflare Workers** and **Cloudflare D1** as the primary production infrastructure, alongside an **ASP.NET Core 9.0 Minimal API** enterprise reference implementation.
 
-| Technology | Purpose |
-|---|---|
-| ASP.NET Core 9.0 | Minimal API framework |
-| PostgreSQL | Database (AWS RDS) |
-| Dapper | Lightweight micro-ORM |
-| Npgsql | PostgreSQL .NET driver |
-| Swagger / OpenAPI | API documentation |
-| Docker | Containerised deployment |
+---
 
-## Project Architecture
+## Architecture Overview
 
 ```
-Endpoints → Services → Repositories → PostgreSQL
-                ↕
-              DTOs / Models / Mappers
+                      ┌──────────────────────────────────────────────┐
+                      │    BioWira Frontend (Vue 3 PWA on Pages)     │
+                      │          https://biowira.pages.dev           │
+                      └──────────────────────┬───────────────────────┘
+                                             │
+                       HTTPS /api/v1/* and /api/v2/* (Same-Origin)
+                                             │
+                                             ▼
+                      ┌──────────────────────────────────────────────┐
+                      │       Cloudflare Worker API (Hono.js)        │
+                      │     https://biowira-api.smah0085.workers.dev │
+                      ├──────────────────────┬───────────────────────┤
+                      │                      │                       │
+                      ▼                      ▼                       ▼
+            ┌──────────────────┐   ┌───────────────────┐   ┌───────────────────┐
+            │  Cloudflare D1   │   │ Google Gemini API │   │  ElevenLabs TTS   │
+            │   (biowira-db)   │   │  (AI Companion)   │   │ (Word Sync Audio) │
+            └──────────────────┘   └───────────────────┘   └───────────────────┘
 ```
 
-**Layered architecture** with clean separation of concerns:
+| Component | Production Stack (Primary) | Reference Enterprise Stack |
+|---|---|---|
+| **Runtime** | Cloudflare Workers (V8 Edge Isolates) | .NET 9.0 Runtime / Docker Container |
+| **Framework** | Hono 4.x (TypeScript) | ASP.NET Core 9.0 Minimal APIs (C# 13) |
+| **Database** | Cloudflare D1 (Distributed SQLite at Edge) | PostgreSQL 16 (AWS RDS / Local) |
+| **ORM / Data Access** | D1 Prepared SQL Statements | Dapper Micro-ORM + Npgsql |
+| **TTS & Narration** | ElevenLabs Multilingual v2 + D1 Cache | ElevenLabs Multilingual v2 + PostgreSQL Cache |
+| **AI Companion** | Google Gemini 1.5 Flash (via Worker Bindings) | Gemini 1.5 Flash / Bedrock |
+| **Deployment** | GitHub Actions &rarr; Cloudflare Workers & Pages | Docker / AWS ECS / Elastic Beanstalk |
+| **Public URL** | `https://biowira.pages.dev/api/v1` | `http://localhost:5215/swagger` |
 
-- **Endpoints** — Minimal API route handlers with OpenAPI docs
-- **Services** — Business logic (mission assignment, score calculation, badge awarding, level-ups)
-- **Repositories** — Data access via Dapper + raw SQL
-- **Interfaces** — Dependency injection contracts
-- **Models** — Entity classes mapped to database tables
-- **DTOs** — Request/response objects decoupled from domain models
-- **Enums** — `BadgeType`, `BadgeSource`, `DifficultyLevel`, `MissionStatus`
-- **Constants** — Animal category definitions
-- **Mappers** — Entity-to-DTO mapping logic
+---
 
-## API Endpoints
+## 1. Cloudflare Serverless Worker (`/worker`) — Production API
 
-### Animals — `/api/animals`
+The production API is completely serverless, zero-maintenance, and globally distributed across Cloudflare's edge network with 0ms cold starts.
 
+### Tech Stack
+* **Framework:** [Hono](https://hono.dev/) v4 (Lightweight, ultra-fast web framework for Cloudflare Workers)
+* **Language:** TypeScript 5.8
+* **Database:** [Cloudflare D1](https://developers.cloudflare.com/d1/) (`biowira-db`)
+* **Tooling:** Wrangler CLI v3
+
+### Directory Layout
+```
+worker/
+├── package.json         # Worker dependencies (hono, @cloudflare/workers-types)
+├── tsconfig.json        # TypeScript configuration for Cloudflare Workers
+├── wrangler.toml        # Cloudflare Worker configuration & D1 database binding
+├── schema.sql           # Complete SQLite D1 database schema and seed data
+└── src/
+    └── index.ts         # Full REST API implementation (all v1 and v2 routes)
+```
+
+### Key Capabilities
+1. **Zero Cold-Starts:** Instant response times worldwide using Cloudflare edge isolates.
+2. **Same-Origin Routing:** Mounted at `https://biowira.pages.dev/api/v1` and `/api/v2` via Cloudflare Pages proxy routes (`public/_routes.json`), completely avoiding CORS latency.
+3. **Integrated Child Safety:** Strict validation on all endpoints; nicknames generated via child-safe combinators without requiring email, password, or PII.
+4. **AI Animal Companion:** Server-side streaming and prompt guardrails via Google Gemini API.
+5. **Synchronized TTS Narration:** Generates word-level audio timestamps using ElevenLabs and caches binary/timestamp payloads directly in D1 to conserve API quota.
+
+---
+
+## 2. ASP.NET Core 9.0 Minimal API (`/backend`) — Enterprise Reference Stack
+
+The `.NET 9` backend is maintained as an enterprise-grade containerized implementation adhering to clean architecture principles.
+
+### Tech Stack
+* **Runtime:** .NET 9.0 (C# 13)
+* **Framework:** ASP.NET Core Minimal APIs
+* **Database:** PostgreSQL 16
+* **Data Access:** Dapper + Npgsql
+* **Documentation:** Swagger / OpenAPI
+* **Containerization:** Docker multi-stage build
+
+### Layered Architecture
+```
+Deploy (Endpoints & Startup)
+  └── Services (Business Logic, Scoring, Badges, Leveling)
+        └── Infrastructure (Dapper Repositories, PostgreSQL)
+              └── Domain (Entities, Enums, DTOs, Mappers)
+```
+
+- **`Deploy/`** — Minimal API route groups, OpenAPI configuration, middleware, and dependency injection wiring.
+- **`Services/`** — Domain services enforcing game rules (mission scoring, level thresholds, badge unlocks, retry logic).
+- **`Infrastructure/`** — PostgreSQL data access using parameterized Dapper SQL.
+- **`Domain/`** — Strongly typed entity classes, DTOs, mappers, and game enums.
+
+---
+
+## 3. Unified REST API Endpoints
+
+Both the Cloudflare Worker API and the ASP.NET Core API strictly adhere to the identical REST contracts:
+
+### 1. Animals — `/api/v1/animals` & `/api/v2/animals`
 | Method | Route | Description |
 |---|---|---|
-| GET | `/` | Paginated animal list, filterable by category |
-| GET | `/{animalId}` | Detailed animal info (habitat, diet, lifespan, conservation status) |
-| GET | `/{animalId}/occurrence` | Sighting/occurrence records for an animal |
+| `GET` | `/api/v1/animals` | List all 15 discovery animals (Mammals, Birds, Reptiles, Amphibians, Marine, Insects) |
+| `GET` | `/api/v2/animals` | Paginated animal card collection (`items`, `totalCount`, `offset`, `limit`) |
+| `GET` | `/api/v1/animals/:id` | Detailed animal profile with habitat, diet, lifespan, conservation status, threats |
+| `GET` | `/api/v2/animals/:id` | Enhanced detail including CC-BY creative commons citations and visual keys |
+| `GET` | `/api/v1/animals/:id/occurrence` | GPS sighting coordinates restricted to the Malaysia geographic bounding box |
 
-### Profiles — `/api/profiles`
-
+### 2. Profiles & Sessions — `/api/v1/profiles`
 | Method | Route | Description |
 |---|---|---|
-| POST | `/` | Create a new child profile (returns profile code + session token) |
-| GET | `/` | Auto-login via `X-Session-Token` header |
-| POST | `/restore` | Restore profile with profile code + PIN (new device login) |
-| DELETE | `/session` | Logout (invalidate session token) |
+| `POST` | `/api/v1/profiles` | Create child profile (`nickname`, `animalId`, `ageGroup`, `avatarPath`) &rarr; returns profile code and session token |
+| `GET` | `/api/v1/profiles` | Retrieve profile and stats using header `X-Session-Token` |
+| `POST` | `/api/v1/profiles/restore` | Multi-device restore using profile code (e.g., `TIG-4821`) and PIN |
+| `DELETE` | `/api/v1/profiles/session` | Sign out and invalidate active session token |
 
-### Missions — `/api/missions`
-
+### 3. Missions — `/api/v1/missions`
 | Method | Route | Description |
 |---|---|---|
-| GET | `/weather-adaptive?weatherCode={code}&isDay={bool}` | Get a random mission adapted to current weather and time of day |
-| POST | `/assign` | Assign a mission to a profile |
-| POST | `/start` | Mark assigned mission as in-progress |
-| POST | `/complete` | Complete mission — awards points, checks level-up, unlocks facts, awards badges |
-| GET | `/history` | Last 3 completed missions for the profile |
+| `GET` | `/api/v1/missions/weather-adaptive` | WMO weather code + isDay adaptive missions (rainy/cloudy indoor, sunny outdoor) |
+| `POST` | `/api/v1/missions/assign` | Assign mission to active profile |
+| `POST` | `/api/v1/missions/start` | Transition mission state to `in_progress` |
+| `POST` | `/api/v1/missions/complete` | Complete mission, award Leaf Points, verify level-ups, unlock badges |
+| `GET` | `/api/v1/missions/history` | Retrieve completed mission log for current profile |
 
-### Quizzes — `/api/quizzes`
-
+### 4. Quizzes — `/api/v1/quizzes`
 | Method | Route | Description |
 |---|---|---|
-| GET | `/` | List all available quizzes |
-| GET | `/questions/random?count={n}` | Random non-repeated questions across all quizzes |
-| GET | `/animals/{animalId}/questions?count={n}` | Random questions for a specific animal |
-| GET | `/{quizId}/questions` | All questions with choices and hints for a quiz |
-| POST | `/save-progress` | Save quiz results — computes score, updates level, unlocks facts, awards badges |
+| `GET` | `/api/v1/quizzes` | List all available wildlife quizzes |
+| `GET` | `/api/v1/quizzes/questions/random` | Random non-repeating question pool across all quizzes |
+| `GET` | `/api/v1/quizzes/animals/:animalId/questions` | Species-specific quiz questions |
+| `GET` | `/api/v1/quizzes/:quizId/questions` | Quiz questions with choices, hints, and explanations |
+| `POST` | `/api/v1/quizzes/save-progress` | Submit quiz score, compute points, update milestones |
 
-### Fun Facts — `/api/fun-facts`
-
+### 5. Fun Facts — `/api/v1/fun-facts`
 | Method | Route | Description |
 |---|---|---|
-| GET | `/` | All fun facts with personalised lock/unlock status |
-| GET | `/{animalId}` | Fun facts for a specific animal |
+| `GET` | `/api/v1/fun-facts` | Full catalog with personalised lock/unlock status based on player level |
+| `GET` | `/api/v1/fun-facts/:animalId` | Per-animal fun facts with level unlock thresholds |
 
-### Badges — `/api/badges`
-
+### 6. Badges — `/api/v1/badges`
 | Method | Route | Description |
 |---|---|---|
-| GET | `/` | Full badge collection with earned status, progress %, and criteria |
+| `GET` | `/api/v1/badges` | Complete badge collection with earned status, progress percentage, and unlock criteria |
 
-## Authentication
+### 7. Audio Narration (TTS) — `/api/v1/tts`
+| Method | Route | Description |
+|---|---|---|
+| `POST` | `/api/v1/tts/generate` | Generate ElevenLabs speech narration with synchronized word timings |
+| `GET` | `/api/v1/tts/audio/:textHash` | Serve cached MP3 audio file |
 
-Session token-based authentication via the `X-Session-Token` HTTP header.
+### 8. AI Animal Companion — `/api/v1/chat`
+| Method | Route | Description |
+|---|---|---|
+| `POST` | `/api/v1/chat/message` | Child-safe conversational AI prompt via Google Gemini |
 
-- Tokens are issued on profile creation or profile restore
-- Validated against the `ProfileSession` table on each request
-- Supports multi-device sessions via `DeviceInfo`
-- Logout invalidates the active session
+---
 
-## Getting Started
+## 4. Database Schema (Cloudflare D1 & PostgreSQL)
 
-### Prerequisites
+The unified schema includes 15 distinct relational tables:
 
-- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
-- PostgreSQL database (or access to the configured AWS RDS instance)
+```
+  ┌──────────────┐          ┌───────────────────────┐          ┌──────────────┐
+  │   profile    ├──────────┤   profile_progress    ├──────────┤ profile_badge│
+  └──────┬───────┘          └───────────────────────┘          └──────────────┘
+         │
+  ┌──────┴───────┐          ┌───────────────────────┐          ┌──────────────┐
+  │profile_session          │        animal         ├──────────┤animal_habitat│
+  └──────────────┘          └──────┬──────────┬─────┘          └──────────────┘
+                                   │          │
+                            ┌──────┴───┐  ┌───┴──────────┐
+                            │ fun_fact │  │animal_threat │
+                            └──────────┘  └──────────────┘
+```
 
-### Run Locally
+1. **`animal`** — Species taxonomy, common names, scientific names, conservation codes, lifespan, and visual assets.
+2. **`animal_habitat`** / **`habitat`** — Priority habitats (Tropical Rainforest, Mangroves, Mountain, River).
+3. **`animal_threat`** / **`threat`** — IUCN threat assessments (Habitat Loss, Poaching, Pollution, Climate Change).
+4. **`animal_occurrence`** — Malaysian geographic observation coordinates.
+5. **`profile`** — Child nicknames, chosen animal avatars, age groups, and profile restore codes.
+6. **`profile_session`** — Active session tokens with multi-device tracking.
+7. **`profile_progress`** — Leaf Points, current level (1–5), quiz counts, mission milestones, and streak days.
+8. **`profile_badge`** / **`badge`** — Milestone and achievement badges.
+9. **`mission`** / **`profile_mission`** — Weather-adaptive missions with status state machine (`assigned` &rarr; `in_progress` &rarr; `completed`).
+10. **`quiz`** / **`quiz_question`** / **`quiz_choice`** — Question banks, difficulty tiers, and hint explanations.
+11. **`fun_fact`** — Micro-learning facts with progressive level unlock requirements.
+12. **`tts_cache`** — Binary audio and timing metadata cache to optimize TTS API performance.
 
+---
+
+## 5. Local Development & Deployment
+
+### Running the Cloudflare Worker Locally
 ```bash
-# Restore dependencies
+# Navigate to worker folder
+cd worker
+
+# Install dependencies
+npm install
+
+# Start local dev server with local D1 emulation
+npx wrangler dev
+
+# Run migrations against local D1 database
+npx wrangler d1 execute biowira-db --local --file=schema.sql
+
+# Deploy to Cloudflare production
+npx wrangler deploy
+```
+
+### Running the .NET 9 Backend Locally
+```bash
+# Navigate to backend folder
+cd backend
+
+# Restore NuGet dependencies
 dotnet restore
 
-# Run (HTTP — port 5215)
+# Run API with HTTP profile (port 5215)
 dotnet run --project Deploy --launch-profile http
 
-# Run (HTTPS — port 7251)
+# Run API with HTTPS profile (port 7251)
 dotnet run --project Deploy --launch-profile https
+
+# Build & Run via Docker
+docker build -t biowira-backend .
+docker run -p 8080:8080 biowira-backend
 ```
+Swagger UI will be available at `http://localhost:5215/swagger`.
 
-Swagger UI is available at `http://localhost:5215/swagger` in development mode.
+---
 
-### Run with Docker
+## 6. CI/CD Automation
 
-```bash
-# Build
-docker build -t biowira-api .
-
-# Run (exposes ports 8080 and 8081)
-docker run -p 8080:8080 -p 8081:8081 biowira-api
-```
-
-### Configuration
-
-Database connection and logging are configured in `Deploy/appsettings.json`. Environment-specific overrides go in `Deploy/appsettings.Development.json`.
-
-## Key Features
-
-- **Weather-adaptive missions** — Outdoor/indoor missions selected based on WMO weather codes and time of day
-- **Progression system** — Points, levels, and milestones tracked per profile
-- **Badge achievements** — Level-based, mission-based, and special badges
-- **Fun fact unlocking** — Educational content unlocked as players progress
-- **Quiz engine** — Randomised questions with difficulty levels, hints, and server-side scoring
-
-## Animal Categories
-
-Mammals · Birds · Reptiles · Amphibians · Marine & Freshwater · Insects
+Deployment is fully automated using GitHub Actions in [`.github/workflows/deploy_cloudflare.yml`](../.github/workflows/deploy_cloudflare.yml):
+* **Worker API Pipeline:** Automatically checks types (`tsc --noEmit`), packages dependencies, and deploys the worker to Cloudflare using `cloudflare/wrangler-action@v3`.
+* **Frontend Pipeline:** Builds the Vue 3 PWA (`npm run build`) with asset precaching and deploys to Cloudflare Pages.
+* **Authentication:** Managed via GitHub repository secret `CLOUDFLARE_API_TOKEN` and Cloudflare Account ID `767ce92674d0bd477eef696c995faf16`.
