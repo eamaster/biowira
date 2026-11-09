@@ -3,11 +3,13 @@ name: Deploy to Cloudflare
 on:
   push:
     branches: [master]
+  pull_request:
+    branches: [master]
   workflow_dispatch:
 
 jobs:
-  deploy-pages:
-    name: Deploy Frontend to Cloudflare Pages
+  build-and-deploy-frontend:
+    name: Build & Deploy Frontend (Pages)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -16,7 +18,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install dependencies
@@ -32,14 +34,21 @@ jobs:
           VITE_SESSION_ENABLED: 'true'
 
       - name: Deploy to Cloudflare Pages
+        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && github.ref == 'refs/heads/master' }}
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: 767ce92674d0bd477eef696c995faf16
           command: pages deploy dist --project-name=biowira --branch=master --commit-dirty=true
 
-  deploy-worker:
-    name: Deploy Serverless API Worker
+      - name: Cloudflare Pages Notice
+        if: ${{ secrets.CLOUDFLARE_API_TOKEN == '' }}
+        run: |
+          echo "ℹ️ CLOUDFLARE_API_TOKEN secret is not set in GitHub repository secrets."
+          echo "Frontend build succeeded. Set CLOUDFLARE_API_TOKEN in GitHub secrets or use Cloudflare Pages Git Integration for automated edge deployments."
+
+  build-and-deploy-worker:
+    name: Build & Deploy Serverless API (Worker)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -48,16 +57,27 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install Worker dependencies
         working-directory: worker
         run: npm ci || npm install
 
+      - name: Type-check Worker
+        working-directory: worker
+        run: npx tsc --noEmit
+
       - name: Deploy Worker to Cloudflare
+        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && github.ref == 'refs/heads/master' }}
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: 767ce92674d0bd477eef696c995faf16
           workingDirectory: worker
           command: deploy
+
+      - name: Cloudflare Worker Notice
+        if: ${{ secrets.CLOUDFLARE_API_TOKEN == '' }}
+        run: |
+          echo "ℹ️ CLOUDFLARE_API_TOKEN secret is not set in GitHub repository secrets."
+          echo "Worker type-check passed. The worker is already deployed and live at https://biowira-api.smah0085.workers.dev."
