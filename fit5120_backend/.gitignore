@@ -1,0 +1,13 @@
+*.user
+.vs/
+bin/
+obj/
+# JMeter runtime output
+jmeter.log
+*.jtl
+
+# JMeter generated reports/results
+performance/results/
+
+# macOS metadata
+.DS_Store

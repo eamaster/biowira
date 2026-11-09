@@ -1,0 +1,77 @@
+// ============================================================
+// Pixel Art Mixins & Utilities
+// ============================================================
+
+@mixin pixel-border($color: var(--color-border)) {
+  border: var(--pixel-border) solid $color;
+  box-shadow: var(--pixel-shadow);
+}
+
+@mixin pixel-border-thick($color: var(--color-border)) {
+  border: var(--pixel-border-thick) solid $color;
+  box-shadow: var(--pixel-shadow-lg);
+}
+
+@mixin pixel-button-base {
+  font-family: var(--font-readable);
+  font-size: var(--text-base);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-5);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  user-select: none;
+  text-decoration: none;
+  line-height: 1.4;
+
+  &:active {
+    transform: translateY(2px);
+    box-shadow: 1px 1px 0px rgba(0,0,0,0.25);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    &:active { transform: none; }
+  }
+}
+
+@mixin pixel-card-base {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-md);
+  @include pixel-border(var(--color-border));
+  overflow: hidden;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+@mixin status-glow($status-color) {
+  border-color: $status-color;
+  box-shadow: 0 0 8px 2px rgba(#{$status-color}, 0.5), var(--pixel-shadow);
+}
+
+// Pixel font heading
+@mixin pixel-heading($size: var(--text-md)) {
+  font-family: var(--font-display);
+  font-size: $size;
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+// Readable body text for children
+@mixin child-body-text {
+  font-family: var(--font-body);
+  font-size: var(--text-lg);
+  color: var(--color-text);
+  line-height: 1.6;
+  font-weight: 600;
+}
+
+// Status colors map for borders/glows
+.status-living    { --animal-status-color: var(--status-living); }
+.status-lost      { --animal-status-color: var(--status-lost); }
+.status-rediscovered { --animal-status-color: var(--status-rediscovered); }
+.status-at_risk   { --animal-status-color: var(--status-at-risk); }
+.status-endangered { --animal-status-color: var(--status-endangered); }

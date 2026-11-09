@@ -1,0 +1,47 @@
+// Shared layout tokens for journal stamp page right columns (fixed-aspect book pages).
+
+@mixin journal-record-right-column {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding-block: var(--space-2);
+}
+
+/** Clue badge row: icons share one baseline; labels sit in a fixed band below. */
+@mixin journal-clue-badge-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+@mixin journal-clue-badge-item($icon-size) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 var(--space-1);
+  box-sizing: border-box;
+}
+
+@mixin journal-clue-icon-slot($icon-size) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: $icon-size;
+  height: $icon-size;
+  flex-shrink: 0;
+  line-height: 0;
+}

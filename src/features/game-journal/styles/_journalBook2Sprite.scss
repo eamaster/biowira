@@ -1,0 +1,14 @@
+// ── Shared layout for open-book sprite `journal_book_2.webp` (1866 × 757) ──────
+// Used by JournalBookFrame (stamp pages) and GameJournalMenuPage.
+
+$journal-book-2-aspect-w: 1866;
+$journal-book-2-aspect-h: 757;
+
+@mixin aspect-box {
+  aspect-ratio: #{$journal-book-2-aspect-w} / #{$journal-book-2-aspect-h};
+}
+
+@mixin inner-inset {
+  position: absolute;
+  inset: 7% 14% 9% 4%;
+}

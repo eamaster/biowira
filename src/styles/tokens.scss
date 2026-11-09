@@ -1,0 +1,248 @@
+// ============================================================
+// BioWira Design Tokens
+// ============================================================
+
+:root {
+  // --- Brand Palette ---
+  --color-bg:           #F5E6C8;
+  --color-bg-card:      #FFF8E7;
+  --color-bg-dark:      #3D2B1F;
+  --color-bg-nav:       #2C1F14;
+  --color-bg-overlay:   rgba(0, 0, 0, 0.55);
+
+  --color-primary:      #5B8A3C;   // deep forest green
+  --color-primary-light: #7BB85A;
+  --color-primary-dark: #3A5C24;
+  --color-secondary:    #E8A020;   // warm amber / leaf gold
+  --color-accent:       #4ABFCF;   // sky/water blue
+
+  --color-text:         #3D2B1F;
+  --color-text-light:   #7A5C40;
+  --color-text-on-dark: #FFF8E7;
+  --color-text-muted:   #A07850;
+
+  --color-border:       #C8A870;
+  --color-border-light: #E8D4A8;
+
+  // --- Conservation Status Colors ---
+  --status-extinct:                #212121; // deep black/charcoal
+  --status-extinct-in-the-wild:    #4A148C; // dark purple
+  --status-critically-endangered:  #B71C1C; // deep red
+  --status-endangered:             #E65100; // red-orange
+  --status-vulnerable:             #FFB300; // amber
+  --status-near-threatened:        #AFB42B; // yellow-green
+  --status-least-concern:          #2E7D32; // green
+  --status-data-deficient:         #757575; // grey
+  --status-not-evaluated:          #BDBDBD; // light grey
+
+  // --- Button Colors ---
+  --btn-green-bg:    #4CAF50;
+  --btn-green-border:#2E7D32;
+  --btn-orange-bg:   #FF9800;
+  --btn-orange-border:#E65100;
+  --btn-blue-bg:     #2196F3;
+  --btn-blue-border: #0D47A1;
+  --btn-red-bg:      #F44336;
+  --btn-red-border:  #B71C1C;
+  --btn-gray-bg:     #9E9E9E;
+  --btn-gray-border: #424242;
+  --btn-yellow-bg:   #FFC107;
+  --btn-yellow-border:#F57F17;
+
+  // --- Quiz Answer Colors ---
+  --answer-default-bg:    #4ABFCF;
+  --answer-default-border:#0288D1;
+  --answer-correct-bg:    #4CAF50;
+  --answer-correct-border:#2E7D32;
+  --answer-wrong-bg:      #F44336;
+  --answer-wrong-border:  #B71C1C;
+
+  // --- Spacing ---
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /**
+   * Games Journal — eco-comic center column stamp stack.
+   * Tighter vertical rhythm (prototype: Epic 10 journal spread).
+   */
+  --journal-eco-stamp-stack-gap: 0;
+  /**
+   * Overlap between rows = less visible banding between serrated stamps.
+   * Composed from spacing scale so tweaks stay consistent.
+   */
+  --journal-eco-stamp-stack-pull: calc(var(--space-5) + var(--space-6));
+  /** Square stamp art; fills spine column; max derived from `--space-*` + vw cap. */
+  --journal-eco-stamp-img-size: clamp(
+    calc(var(--space-16) - var(--space-1)),
+    13vw,
+    min(calc(var(--space-10) * 3 + var(--space-5)), 36vw)
+  );
+
+  // --- Border Radius ---
+  --radius-sm:  6px;
+  --radius-md:  12px;
+  --radius-lg:  18px;
+  --radius-xl:  24px;
+  /** Large rounded panels on rainforest scene pages (quiz hub, quiz result, …) */
+  --radius-2xl: 28px;
+  --radius-full: 9999px;
+
+  /**
+   * Warm “parchment” surface for stacked content on `BioWiraScenePage`
+   * (shared by quiz hub, quiz result panel, and similar UIs).
+   */
+  --scene-warm-panel-bg: rgba(255, 248, 231, 0.86);
+  --scene-warm-panel-border: rgba(145, 111, 64, 0.35);
+  --scene-warm-panel-shadow: 5px 5px 0 rgba(61, 43, 31, 0.12);
+
+  // --- Pixel Border Width ---
+  --pixel-border: 3px;
+  --pixel-border-thick: 4px;
+  --pixel-shadow: 3px 3px 0px rgba(0,0,0,0.25);
+  --pixel-shadow-lg: 4px 4px 0px rgba(0,0,0,0.3);
+  --pixel-shadow-inset: inset 2px 2px 0px rgba(255,255,255,0.3);
+
+  // --- Typography ---
+  --font-pixel:  'Press Start 2P', monospace;
+  --font-body:   'Nunito', 'Segoe UI', sans-serif;
+  --font-readable: var(--font-body);
+  --font-display: var(--font-pixel);
+
+  --text-xs:   clamp(12px, 1.2vw, 14px);
+  --text-sm:   clamp(14px, 1.5vw, 16px);
+  --text-base: clamp(16px, 1.8vw, 18px);
+  --text-md:   clamp(18px, 2vw, 20px);
+  --text-lg:   clamp(20px, 2.5vw, 24px);
+  --text-xl:   clamp(24px, 4vw, 28px);
+  --text-2xl:  clamp(28px, 5vw, 32px);
+  --text-3xl:  clamp(32px, 6vw, 36px);
+  --text-4xl:  clamp(36px, 8vw, 44px);
+
+  --content-readable-width: 960px;
+  --content-wide-width: 1200px;
+  --content-game-width: 1040px;
+
+  // --- Layout ---
+  --nav-height-top:    72px;
+  --nav-height-bottom: 64px;
+
+  /**
+   * Eco-Comic reader: vertical chrome subtracted from `100dvh` when sizing the 16:9 stage.
+   * Top nav (desktop) or bottom nav (mobile) + scene content padding — keep in sync with
+   * `BioWiraScenePage` immersive content padding, not magic literals in components.
+   */
+  --eco-comic-reader-vh-padding: calc(var(--space-4) * 2 + var(--space-2));
+
+  /**
+   * Eco-Comic dialogue overlay: translucent glass; stronger glyph halo keeps body text readable for kids.
+   */
+  --eco-comic-overlay-bg-solid: rgba(255, 251, 236, 0.88);
+  --eco-comic-overlay-bg-glass: rgba(255, 244, 212, 0.62);
+  --eco-comic-overlay-blur: 10px;
+  --eco-comic-overlay-backdrop-saturate: 1.22;
+
+  /** Inline copy — `--color-text` on warm glass */
+  --eco-comic-overlay-text: var(--color-text);
+  --eco-comic-overlay-text-speaker: var(--color-primary-dark);
+
+  /** PixelButtons inside overlay: one footprint so rows stay short */
+  --eco-comic-overlay-btn-min-height: 44px;
+  --eco-comic-overlay-btn-pad-block: 5px;
+  --eco-comic-overlay-btn-pad-inline: 12px;
+  --eco-comic-overlay-btn-font: clamp(12px, 1.25vw, 14px);
+  --eco-comic-overlay-btn-secondary-pad-inline: 10px;
+
+  /** Narration speaker control — aligns visually with compact PixelButtons */
+  --eco-comic-narration-btn-size: 36px;
+
+  /** Glyph halo — stronger outer glow for darker/busy panels behind glass */
+  --eco-comic-overlay-text-shadow:
+    0 0 14px rgba(255, 251, 236, 1),
+    0 0 28px rgba(255, 251, 236, 0.88),
+    0 1px 0 rgba(255, 251, 236, 0.95);
+
+  /** Horizontal strip: matches readable column cap (`--content-readable-width`) */
+  --eco-comic-overlay-strip-max-inline-pct: 96%;
+  /** Corner strips — shared width (`path_a_12` top-right, `path_a2_19` bottom-left) */
+  --eco-comic-overlay-corner-strip-max-inline-pct: 72%;
+  --max-content-width: 1200px;
+
+  /**
+   * Home page vertical rhythm (see HomePage.vue).
+   * Scoped overrides on `.home-page` are allowed for fine-tuning.
+   */
+  --home-section-gap: clamp(28px, 4.5vw, 52px);
+  /** Space reserved below the floated wood ribbon before dashboard inner content begins. */
+  --home-panel-gap: clamp(14px, 2.5vw, 24px);
+  /** Vertical translate for overlap ribbons (negative = float upward). */
+  --home-ribbon-offset: -42%;
+  /** Stack gap inside `.page-content` between hero-adjacent blocks (feature row ↔ dashboards). */
+  --home-stack-gap: clamp(20px, 3.2vh, 40px);
+  /** Space between the two dashboard stacks (Continue Learning ↔ Your Progress). */
+  --home-dashboard-stack-gap: clamp(28px, 4vw, 48px);
+  /** Horizontal clearance when pinning side decorations just outside the readable column. */
+  --home-deco-side-clearance: clamp(8px, 1.5vw, 20px);
+  /**
+   * Feature cards (HomeFeatureCard home variant): bottom inset inside the nine-slice panel art.
+   * Keeps CTA sprites clear of the painted lower border and corner flowers on narrow viewports.
+   */
+  --home-feature-card-padding-block-end: clamp(18px, 5vw, 32px);
+
+  // Top nav wordmark (see PixelTopNav): single source for sizes — do not hardcode in components
+  --nav-wordmark-height: 54px;
+  --nav-wordmark-height-md: 60px;
+  --nav-wordmark-max-w: 280px;
+  --nav-wordmark-max-w-md: 320px;
+
+  // --- Z-indices ---
+  --z-base:       1;
+  /**
+   * Scene pages (`BioWiraScenePage`): parchment column + ribbon sit below foreground corner art.
+   */
+  --z-scene-surface: 3;
+  /**
+   * Scene corner decorations — above `--z-scene-surface`, below global nav/overlays/modals.
+   */
+  --z-scene-decor: 8;
+  --z-overlay:    100;
+  --z-modal:      200;
+  --z-nav:        300;
+  --z-toast:      400;
+
+  /** Vertical inset for rainforest corner sprites (clear footer band without hardcoded viewport math). */
+  --scene-deco-bottom: clamp(var(--space-5), 9dvh, var(--space-16));
+
+  /**
+   * `AnimalChatGuide` `--sky-left` / `--sky-right`: inset from `BioWiraScenePage` (.scene-page) block-start.
+   */
+  --scene-animal-chat-sky-inset-block-start: clamp(10px, 2vh, 40px);
+
+  /** Sky animal-chat horizontal inset toward the scene readable band edges. */
+  --scene-animal-chat-sky-inset-inline-edge: clamp(10px, 2vw, 40px);
+
+  /**
+   * Scene subtitle typography (`BioWiraScenePage` `.scene-page__subtitle`).
+   */
+  --scene-page-subtitle-font-size: clamp(15px, 1.1vw + 11px, 18px);
+  --scene-page-subtitle-line-height: 1.35;
+
+  // --- Transitions ---
+  --transition-fast:   0.15s ease;
+  --transition-base:   0.25s ease;
+  --transition-slow:   0.4s ease;
+  --transition-bounce: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+// --- Breakpoints (as SCSS variables for use in media queries) ---
+$bp-sm:  480px;
+$bp-md:  768px;
+$bp-lg:  1024px;
+$bp-xl:  1280px;
