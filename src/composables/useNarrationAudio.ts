@@ -69,11 +69,22 @@ export function useNarrationAudio(textSource: MaybeRefOrGetter<string>) {
 
   let wordTimings: WordTimingMs[] = []
   let narrationText = ''
+  let lastMimeType = 'audio/mpeg'
 
   let audioEl: HTMLAudioElement | null = null
   let abortController: AbortController | null = null
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
+
+  function stopBrowserSpeech() {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel()
+      } catch {
+        // Ignore synthesis cancel exceptions
+      }
+    }
+  }
 
   function removeAudioListeners() {
     if (!audioEl) return
@@ -84,6 +95,7 @@ export function useNarrationAudio(textSource: MaybeRefOrGetter<string>) {
   }
 
   function stopAudio() {
+    stopBrowserSpeech()
     if (audioEl) {
       try {
         audioEl.pause()
@@ -130,11 +142,29 @@ export function useNarrationAudio(textSource: MaybeRefOrGetter<string>) {
     el.onended = () => {
       isPlaying.value = false
       setNarrationActive(false)
+      stopBrowserSpeech()
       currentTimeMs.value = durationMs.value
       highlightedWordIndex.value = words.value.length - 1
     }
 
     el.onerror = () => {
+      // If HTMLAudioElement media stream fails, fallback to browser Web Speech API
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window && narrationText) {
+        try {
+          stopBrowserSpeech()
+          const utterance = new SpeechSynthesisUtterance(narrationText)
+          utterance.rate = 0.9
+          utterance.lang = 'en-US'
+          utterance.onend = () => {
+            isPlaying.value = false
+            setNarrationActive(false)
+          }
+          window.speechSynthesis.speak(utterance)
+          isPlaying.value = true
+          setNarrationActive(true)
+          return
+        } catch {}
+      }
       isPlaying.value = false
       setNarrationActive(false)
       errorMessage.value = "Oops! We couldn't load the narration. Please try again."
@@ -209,6 +239,7 @@ export function useNarrationAudio(textSource: MaybeRefOrGetter<string>) {
       // else: keep the locally-tokenized words and estimated duration
 
       const audioSrc = narrationService.resolveNarrationAudioUrl(metadata.audioUrl)
+      lastMimeType = metadata.mimeType || 'audio/mpeg'
       const el = new Audio(audioSrc)
       attachAudioListeners(el)
       audioEl = el
@@ -244,6 +275,19 @@ export function useNarrationAudio(textSource: MaybeRefOrGetter<string>) {
       }
       isPlaying.value = true
       setNarrationActive(true)
+
+      // When backend returned synthesized WAV timing fallback, speak via Web Speech API so voice is heard
+      if (lastMimeType === 'audio/wav' && typeof window !== 'undefined' && 'speechSynthesis' in window && narrationText) {
+        try {
+          stopBrowserSpeech()
+          const utterance = new SpeechSynthesisUtterance(narrationText)
+          utterance.rate = 0.9
+          utterance.lang = 'en-US'
+          window.speechSynthesis.speak(utterance)
+        } catch {
+          // Ignore synthesis error
+        }
+      }
     } catch (err: unknown) {
       const isAbort =
         (err instanceof DOMException && err.name === 'AbortError') ||

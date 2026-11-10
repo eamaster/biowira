@@ -12,6 +12,8 @@ import { useProgressStore } from '@/stores/progressStore'
 import { useDrawingStore } from '@/stores/drawingStore'
 import { useRouter } from 'vue-router'
 import DiscoverAnimalIcon from '@/components/ui/DiscoverAnimalIcon.vue'
+import { getDiscoveryAnimalIconUrl } from '@/app/discoveryAnimalIconRegistry'
+import { getAnimalIconUrl } from '@/app/iconRegistry'
 import CitedImage from '@/components/ui/CitedImage.vue'
 import DiscoverStatIcon from '@/components/ui/DiscoverStatIcon.vue'
 import { getDiscoverStatIcon } from '@/app/discoverStatIconRegistry'
@@ -104,20 +106,27 @@ const hasSafeStatus = computed(
 
 // ── Hero photo vs spirit (local spirit WebP ≠ licensed wildlife photo — no caption on spirit fallback) ──
 const primaryPhotoFailed = ref(false)
+const avatarPhotoFailed = ref(false)
 
 watch(
   () => props.animal?.id,
   () => {
     primaryPhotoFailed.value = false
+    avatarPhotoFailed.value = false
   },
 )
 
-/** URL for caption-matched wildlife photo — detail `imageUrl`, else avatar fallback. */
+/** URL for caption-matched wildlife photo — detail `imageUrl`, else avatar fallback, else discovery WebP, else SVG. */
 const wildlifePhotoSrc = computed(() => {
   const a = props.animal
   if (!a) return null
   if (!primaryPhotoFailed.value && a.animalPhotoUrl) return a.animalPhotoUrl
-  if (a.avatarPath) return a.avatarPath
+  if (!avatarPhotoFailed.value && a.avatarPath) return a.avatarPath
+  // Fallback to Vite-bundled discovery registry WebP
+  const discoveryUrl = getDiscoveryAnimalIconUrl({ visualKey: a.visualKey, commonName: a.commonName })
+  if (discoveryUrl) return discoveryUrl
+  // Fallback to registered SVG icon
+  if (a.visualKey && getAnimalIconUrl(a.visualKey)) return getAnimalIconUrl(a.visualKey)
   return null
 })
 
@@ -131,6 +140,8 @@ const wildlifePhotoAttribution = computed(() => {
 function onWildlifePhotoError() {
   if (props.animal?.animalPhotoUrl && !primaryPhotoFailed.value) {
     primaryPhotoFailed.value = true
+  } else if (props.animal?.avatarPath && !avatarPhotoFailed.value) {
+    avatarPhotoFailed.value = true
   }
 }
 
