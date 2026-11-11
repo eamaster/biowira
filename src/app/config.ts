@@ -331,6 +331,36 @@ export function getMapboxToken(): string | undefined {
   return import.meta.env['VITE_MAPBOX_ACCESS_TOKEN']
 }
 
+let cachedRuntimeToken: string | undefined = undefined
+
+/**
+ * Resolves the Mapbox access token with fallback to the backend worker runtime config.
+ * 1. Checks build-time import.meta.env['VITE_MAPBOX_ACCESS_TOKEN']
+ * 2. If absent, queries GET /api/v1/config/mapbox-token from the Cloudflare Worker
+ */
+export async function resolveMapboxToken(): Promise<string | undefined> {
+  const envToken = getMapboxToken()
+  if (envToken && typeof envToken === 'string' && envToken.trim() !== '') {
+    return envToken.trim()
+  }
+  if (cachedRuntimeToken !== undefined) {
+    return cachedRuntimeToken
+  }
+  try {
+    const res = await fetch('/api/v1/config/mapbox-token')
+    if (res.ok) {
+      const data = await res.json()
+      if (data && typeof data.token === 'string' && data.token.trim() !== '') {
+        cachedRuntimeToken = data.token.trim()
+        return cachedRuntimeToken
+      }
+    }
+  } catch {
+    // Graceful fallback
+  }
+  return undefined
+}
+
 // ── Mapbox Occurrence Map Config ──────────────────────────────────────────────
 export const MAPBOX_CONFIG = {
   style: 'mapbox://styles/mapbox/outdoors-v12',

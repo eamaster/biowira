@@ -5,6 +5,8 @@ type Bindings = {
   DB: D1Database
   GEMINI_API_KEY?: string
   ELEVENLABS_API_KEY?: string
+  VITE_MAPBOX_ACCESS_TOKEN?: string
+  MAPBOX_ACCESS_TOKEN?: string
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -68,6 +70,10 @@ async function authenticate(db: D1Database, token: string | null | undefined) {
 // ── Root & Health ─────────────────────────────────────────────────────────────
 app.get('/', (c) => c.json({ name: 'BioWira Serverless API', version: '2.0.0', status: 'healthy' }))
 app.get('/health', (c) => c.json({ status: 'ok' }))
+app.get('/api/v1/config/mapbox-token', (c) => {
+  const token = c.env.VITE_MAPBOX_ACCESS_TOKEN || c.env.MAPBOX_ACCESS_TOKEN || ''
+  return c.json({ token })
+})
 
 // ── Animals Endpoints ─────────────────────────────────────────────────────────
 

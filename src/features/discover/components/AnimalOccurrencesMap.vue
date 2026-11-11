@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import type { Animal, AnimalOccurrence } from '@/domain/animal'
-import { getMapboxToken, MAPBOX_CONFIG } from '@/app/config'
+import { getMapboxToken, resolveMapboxToken, MAPBOX_CONFIG } from '@/app/config'
 import { getDiscoveryAnimalIconUrl } from '@/app/discoveryAnimalIconRegistry'
 import { escapeHtml } from '@/utils/htmlEscape'
 import PixelEmptyState from '@/components/ui/PixelEmptyState.vue'
@@ -21,7 +21,8 @@ const mapContainer = ref<HTMLElement | null>(null)
 let mapInstance: mapboxgl.Map | null = null
 const markers: mapboxgl.Marker[] = []
 
-const token = getMapboxToken()
+const token = ref<string | undefined>(getMapboxToken())
+const isLoadingToken = ref(false)
 
 function close() {
   emit('close')
@@ -36,89 +37,103 @@ function cleanupMap() {
   }
 }
 
-onMounted(() => {
-  if (props.animal && token) {
-    if (!mapContainer.value) return
+function renderMap(authToken: string) {
+  if (!mapContainer.value || !props.animal) return
 
-    mapboxgl.accessToken = token
-    const occurrences = props.animal.occurrences || []
+  mapboxgl.accessToken = authToken
+  const occurrences = props.animal.occurrences || []
 
-    // Evaluate if we should fit bounds or use default
-    const hasOccurrences = occurrences.length > 0
-    const initialCenter = (hasOccurrences && occurrences[0])
-      ? ([occurrences[0].longitude, occurrences[0].latitude] as [number, number])
-      : MAPBOX_CONFIG.defaultCenter
+  // Evaluate if we should fit bounds or use default
+  const hasOccurrences = occurrences.length > 0
+  const initialCenter = (hasOccurrences && occurrences[0])
+    ? ([occurrences[0].longitude, occurrences[0].latitude] as [number, number])
+    : MAPBOX_CONFIG.defaultCenter
 
-    mapInstance = new mapboxgl.Map({
-      container: mapContainer.value,
-      style: MAPBOX_CONFIG.style,
-      projection: MAPBOX_CONFIG.projection,
-      center: initialCenter,
-      zoom: hasOccurrences ? 6 : MAPBOX_CONFIG.defaultZoom,
-      minZoom: MAPBOX_CONFIG.minZoom,
-      maxZoom: MAPBOX_CONFIG.maxZoom,
-      maxBounds: MAPBOX_CONFIG.maxBounds,
-      pitchWithRotate: false,
-      dragRotate: false,
-      attributionControl: false // Keep it clean for pixel UI
+  mapInstance = new mapboxgl.Map({
+    container: mapContainer.value,
+    style: MAPBOX_CONFIG.style,
+    projection: MAPBOX_CONFIG.projection,
+    center: initialCenter,
+    zoom: hasOccurrences ? 6 : MAPBOX_CONFIG.defaultZoom,
+    minZoom: MAPBOX_CONFIG.minZoom,
+    maxZoom: MAPBOX_CONFIG.maxZoom,
+    maxBounds: MAPBOX_CONFIG.maxBounds,
+    pitchWithRotate: false,
+    dragRotate: false,
+    attributionControl: false // Keep it clean for pixel UI
+  })
+
+  // Fit bounds if occurrences span an area
+  if (hasOccurrences && occurrences.length > 1 && mapInstance) {
+    const bounds = new mapboxgl.LngLatBounds()
+    occurrences.forEach((occ: AnimalOccurrence) => {
+      bounds.extend([occ.longitude, occ.latitude])
+    })
+    mapInstance.fitBounds(bounds, { padding: MAPBOX_CONFIG.fitPadding, maxZoom: 10 })
+  }
+
+  mapInstance.addControl(new mapboxgl.NavigationControl({
+    showCompass: false // Disabled rotation
+  }), 'top-right')
+
+  // Add custom pixel marker for each occurrence
+  for (const occ of occurrences) {
+    const el = document.createElement('div')
+    el.className = 'pixel-marker'
+
+    const iconUrl = getDiscoveryAnimalIconUrl({
+      visualKey: props.animal.visualKey,
+      commonName: props.animal.commonName,
     })
 
-    // Fit bounds if occurrences span an area
-    if (hasOccurrences && occurrences.length > 1 && mapInstance) {
-      const bounds = new mapboxgl.LngLatBounds()
-      occurrences.forEach((occ: AnimalOccurrence) => {
-        bounds.extend([occ.longitude, occ.latitude])
-      })
-      mapInstance.fitBounds(bounds, { padding: MAPBOX_CONFIG.fitPadding, maxZoom: 10 })
+    if (iconUrl) {
+      const img = document.createElement('img')
+      img.src = iconUrl
+      img.alt = props.animal.commonName
+      img.style.width = '24px'
+      img.style.height = '24px'
+      img.style.imageRendering = 'pixelated'
+      img.style.pointerEvents = 'none'
+
+      el.appendChild(img)
+      el.style.background = 'transparent'
+      el.style.border = 'none'
+      el.style.boxShadow = 'none'
+    } else {
+      el.innerText = props.animal.iconEmoji
     }
 
-    mapInstance.addControl(new mapboxgl.NavigationControl({
-      showCompass: false // Disabled rotation
-    }), 'top-right')
+    const popupHtml = `
+      <div class="pixel-popup-content">
+        <strong>${escapeHtml(props.animal?.commonName ?? 'Animal')}</strong>
+        <p>${occ.latitude.toFixed(4)}, ${occ.longitude.toFixed(4)}</p>
+      </div>
+    `
 
-    // Add custom pixel marker for each occurrence
-    for (const occ of occurrences) {
-      const el = document.createElement('div')
-      el.className = 'pixel-marker'
+    const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(popupHtml)
 
-      const iconUrl = getDiscoveryAnimalIconUrl({
-        visualKey: props.animal.visualKey,
-        commonName: props.animal.commonName,
-      })
+    const marker = new mapboxgl.Marker(el)
+      .setLngLat([occ.longitude, occ.latitude])
+      .setPopup(popup)
+      .addTo(mapInstance)
 
-      if (iconUrl) {
-        const img = document.createElement('img')
-        img.src = iconUrl
-        img.alt = props.animal.commonName
-        img.style.width = '24px'
-        img.style.height = '24px'
-        img.style.imageRendering = 'pixelated'
-        img.style.pointerEvents = 'none'
+    markers.push(marker)
+  }
+}
 
-        el.appendChild(img)
-        el.style.background = 'transparent'
-        el.style.border = 'none'
-        el.style.boxShadow = 'none'
-      } else {
-        el.innerText = props.animal.iconEmoji
-      }
-
-      const popupHtml = `
-        <div class="pixel-popup-content">
-          <strong>${escapeHtml(props.animal?.commonName ?? 'Animal')}</strong>
-          <p>${occ.latitude.toFixed(4)}, ${occ.longitude.toFixed(4)}</p>
-        </div>
-      `
-
-      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(popupHtml)
-
-      const marker = new mapboxgl.Marker(el)
-        .setLngLat([occ.longitude, occ.latitude])
-        .setPopup(popup)
-        .addTo(mapInstance)
-
-      markers.push(marker)
+onMounted(async () => {
+  if (!token.value) {
+    isLoadingToken.value = true
+    try {
+      token.value = await resolveMapboxToken()
+    } finally {
+      isLoadingToken.value = false
     }
+  }
+
+  if (props.animal && token.value) {
+    await nextTick()
+    renderMap(token.value)
   }
 })
 
@@ -135,7 +150,14 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="map-view__content">
-      <template v-if="!token">
+      <template v-if="isLoadingToken">
+        <PixelEmptyState
+          emoji="🗺️"
+          title="Loading Map..."
+          description="Connecting to occurrence map services."
+        />
+      </template>
+      <template v-else-if="!token">
         <PixelEmptyState
           emoji="🗺️"
           title="Map Unavailable"
