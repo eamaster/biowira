@@ -547,7 +547,7 @@ fit5120_frontend/
 ├── tsconfig.json
 ├── tsconfig.app.json          # Strict TS for src/ (excludes test files)
 ├── tsconfig.node.json         # For vite.config.ts / vitest.config.ts
-├── vite.config.ts             # Vue + PWA + dev proxy (/api → api.biowira.dpdns.org)
+├── vite.config.ts             # Vue + PWA + dev proxy (/api → biowira-api.smah0085.workers.dev)
 ├── vitest.config.ts           # happy-dom env; merges viteConfig
 ├── vitest.setup.ts            # Forces all VITE_REPO_* = 'mock' for unit tests
 └── README.md
@@ -577,7 +577,7 @@ npm run dev
 
 Default dev URL: **http://localhost:5173** (Vite auto-increments port if taken).
 
-Vite proxies `/api` → `https://api.biowira.dpdns.org` in dev so all `apiClient` calls work out of the box without any backend on your machine.
+Vite proxies `/api` → `https://biowira-api.smah0085.workers.dev` in dev so all `apiClient` calls work out of the box without any backend on your machine.
 
 ### Full pre-submit validation
 
@@ -605,7 +605,7 @@ Copy `.env.example` to `.env`. Vite only injects variables prefixed with `VITE_`
 | `VITE_MAPBOX_ACCESS_TOKEN` | _(empty)_ | Required for Discover occurrence map; inject via CI secret in GitHub Actions. |
 | `VITE_WEATHER_API_BASE_URL` | _(optional)_ | Override the Open-Meteo base URL (defaults to `https://api.open-meteo.com/v1`). |
 | `VITE_BASE_PATH` | `/` | Deployment base path for branch/iteration deployments (e.g. `/ver1/`). |
-| `VITE_DEV_API_ORIGIN` | `https://api.biowira.dpdns.org` | Override the API host that Vite's dev proxy forwards to. |
+| `VITE_DEV_API_ORIGIN` | `https://biowira-api.smah0085.workers.dev` | Override the API host that Vite's dev proxy forwards to. |
 | `VITE_NARRATION_SOURCE` | `api` | `api` = BioWira backend ElevenLabs cached TTS (default); `browser` = Web Speech API explicit dev fallback. Never put ElevenLabs keys in `.env`. |
 | `VITE_TTS_VOICE_ID` | `rCmVtv8cYU60uhlsOo1M` | ElevenLabs voice ID sent to the backend. Backend uses it to key the PostgreSQL TTS cache. |
 | `VITE_TTS_MODEL_ID` | `eleven_v3` | ElevenLabs model ID sent to the backend. |
@@ -1795,4 +1795,4 @@ npm run build        # production build succeeds (vue-tsc + vite)
 ---
 
 *Built for FIT5120 Industry Experience Studio — Monash University*  
-*Frontend-only repository. Backend API at `https://api.biowira.dpdns.org`. See `src/repositories/api/` and `src/domain/*Api.dto.ts` for wire-level contract details.*
+*Full-stack serverless platform. Primary backend API running on Cloudflare Workers & D1 at `https://biowira.pages.dev/api/v1` (and direct at `https://biowira-api.smah0085.workers.dev`). Enterprise .NET 9 reference implementation in `/backend`. See `src/repositories/api/` and `src/domain/*Api.dto.ts` for wire-level contract details.*

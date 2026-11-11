@@ -7,7 +7,7 @@ export function normalizeApiBaseUrl(url: string): string {
 
 /**
  * Same-origin API prefix including the version segment.
- * Production: CloudFront routes `https://biowira.dpdns.org/api/*` → backend, so `/api/v1/...` resolves.
+ * Production: Cloudflare Pages routes `https://biowira.pages.dev/api/*` → Cloudflare Worker backend, so `/api/v1/...` resolves.
  * Local dev: Vite dev server proxies `/api` → backend origin (see vite.config.ts), so `/api/v1/...` also resolves.
  * All backend endpoints live under `/api/v1/` per the Swagger contract.
  * Centralised here — repositories use clean relative paths like `/animals`, `/profiles`, etc.

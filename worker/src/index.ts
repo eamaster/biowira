@@ -1051,7 +1051,7 @@ app.post('/api/v1/Chat/ask', handleChatAsk)
 app.get('/all_assets/:filename', async (c) => {
   const filename = c.req.param('filename')
   try {
-    const res = await fetch(`https://biowira.dpdns.org/all_assets/${filename}`)
+    const res = await fetch(`https://biowira.pages.dev/all_assets/${filename}`)
     if (res.ok) {
       const bytes = await res.arrayBuffer()
       const contentType = res.headers.get('content-type') || 'image/webp'
@@ -1139,38 +1139,7 @@ app.post('/api/v1/tts/generate', async (c) => {
     }
   }
 
-  // 2. Fetch from AWS reference API (has complete ElevenLabs narration & timings for all 31 animals)
-  try {
-    const awsRes = await fetch('https://api.biowira.dpdns.org/api/v1/tts/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, voiceId, modelId, speed })
-    })
-    if (awsRes.ok) {
-      const awsData: any = await awsRes.json()
-      if (awsData.timings && awsData.timings.length > 0) {
-        await c.env.DB.prepare(`
-          INSERT OR REPLACE INTO tts_audio_cache (text_hash, voice_id, model_id, speed, mime_type, audio_content, timings_json)
-          VALUES (?, ?, ?, ?, ?, COALESCE((SELECT audio_content FROM tts_audio_cache WHERE text_hash = ?), X'00'), ?)
-        `).bind(textHash, voiceId, modelId, speed, 'audio/mpeg', textHash, JSON.stringify(awsData.timings)).run().catch(() => {})
-
-        return c.json({
-          textHash,
-          voiceId,
-          modelId,
-          speed,
-          mimeType: 'audio/mpeg',
-          cached: true,
-          audioUrl: `${origin}/api/v1/tts/audio/${textHash}`,
-          timings: awsData.timings
-        })
-      }
-    }
-  } catch (awsErr) {
-    console.warn('AWS TTS fetch error:', awsErr)
-  }
-
-  // 3. Generate timings estimate for narration
+  // 2. Generate timings estimate for narration fallback
   const words = text.split(/\s+/).filter(Boolean)
   const wordDuration = 0.35 / speed
   let currentStart = 0
@@ -1184,7 +1153,7 @@ app.post('/api/v1/tts/generate', async (c) => {
   let audioBytes: Uint8Array | null = null
   let mimeType = 'audio/mpeg'
 
-  // 4. Call ElevenLabs API if key is available
+  // 3. Call ElevenLabs API if key is available
   if (c.env.ELEVENLABS_API_KEY) {
     try {
       const elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps`, {
@@ -1292,12 +1261,12 @@ app.get('/api/v1/tts/audio/:textHash', async (c) => {
     })
   }
 
-  // Fetch authentic ElevenLabs MP3 from AWS reference server
+  // Fetch authentic ElevenLabs MP3 from local Cloudflare Pages static assets
   try {
-    const awsRes = await fetch(`https://api.biowira.dpdns.org/api/v1/tts/audio/${textHash}`)
-    if (awsRes.ok) {
-      const audioBytes = await awsRes.arrayBuffer()
-      const contentType = awsRes.headers.get('content-type') || 'audio/mpeg'
+    const staticRes = await fetch(`https://biowira.pages.dev/audio/tts/${textHash}.mp3`)
+    if (staticRes.ok) {
+      const audioBytes = await staticRes.arrayBuffer()
+      const contentType = staticRes.headers.get('content-type') || 'audio/mpeg'
       // Cache in D1 for all subsequent calls
       if (c.executionCtx && typeof c.executionCtx.waitUntil === 'function') {
         c.executionCtx.waitUntil(
@@ -1322,8 +1291,8 @@ app.get('/api/v1/tts/audio/:textHash', async (c) => {
         }
       })
     }
-  } catch (awsAudioErr) {
-    console.warn('AWS audio fetch error:', awsAudioErr)
+  } catch (audioErr) {
+    console.warn('Local static audio fetch error:', audioErr)
   }
 
   // Resilient fallback: return valid 3s WAV rather than a 404 so HTMLAudioElement never throws

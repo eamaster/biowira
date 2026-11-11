@@ -426,7 +426,8 @@ const habitatMap = {
 // 1. Images
 for (const a of dataset.animals) {
   const imgId = a.id;
-  sql += `INSERT OR IGNORE INTO image (image_id, url, title, author_name, author_url, source_name, source_url, license_name, license_url) VALUES (${imgId}, ${escapeSql(a.imageUrl)}, ${escapeSql(a.imageTitle)}, ${escapeSql(a.imageCreatorName)}, ${escapeSql(a.imageCreatorUrl)}, ${escapeSql(a.imageSourceName)}, ${escapeSql(a.imageSourceUrl)}, ${escapeSql(a.imageLicenseName)}, ${escapeSql(a.imageLicenseUrl)});\n`;
+  const localUrl = a.imageUrl?.replace('https://biowira.dpdns.org', '') || a.imageUrl;
+  sql += `INSERT OR IGNORE INTO image (image_id, url, title, author_name, author_url, source_name, source_url, license_name, license_url) VALUES (${imgId}, ${escapeSql(localUrl)}, ${escapeSql(a.imageTitle)}, ${escapeSql(a.imageCreatorName)}, ${escapeSql(a.imageCreatorUrl)}, ${escapeSql(a.imageSourceName)}, ${escapeSql(a.imageSourceUrl)}, ${escapeSql(a.imageLicenseName)}, ${escapeSql(a.imageLicenseUrl)});\n`;
 }
 
 // 2. Animals
@@ -436,7 +437,8 @@ for (const a of dataset.animals) {
   const csId = statusMap[csCode] || 1;
   const slug = a.commonName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
   const avatar = `/avatars/${slug}.png`;
-  sql += `INSERT OR REPLACE INTO animal (animal_id, common_name, scientific_name, group_id, diet, lifespan, description, conservation_status_id, image_url, avatar_path, image_id) VALUES (${a.id}, ${escapeSql(a.commonName)}, ${escapeSql(a.scientificName)}, ${gId}, ${escapeSql(a.diet)}, ${escapeSql(a.lifespan)}, ${escapeSql(a.description)}, ${csId}, ${escapeSql(a.imageUrl)}, ${escapeSql(avatar)}, ${a.id});\n`;
+  const localUrl = a.imageUrl?.replace('https://biowira.dpdns.org', '') || a.imageUrl;
+  sql += `INSERT OR REPLACE INTO animal (animal_id, common_name, scientific_name, group_id, diet, lifespan, description, conservation_status_id, image_url, avatar_path, image_id) VALUES (${a.id}, ${escapeSql(a.commonName)}, ${escapeSql(a.scientificName)}, ${gId}, ${escapeSql(a.diet)}, ${escapeSql(a.lifespan)}, ${escapeSql(a.description)}, ${csId}, ${escapeSql(localUrl)}, ${escapeSql(avatar)}, ${a.id});\n`;
 }
 
 // 3. Threats
@@ -525,3 +527,4 @@ for (const item of dataset.tts) {
 
 fs.writeFileSync('worker/schema.sql', sql, 'utf8');
 console.log('Successfully generated worker/schema.sql! Total size:', sql.length, 'bytes');
+

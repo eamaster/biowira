@@ -114,8 +114,8 @@ export function mapAnimalListItemFromCardApiDto(dto: AnimalCardApiDto): AnimalLi
   const status = conservationCodeToStatus(dto.statusCode)
   const backendId = pickBackendIdFromAnimalCardWire(dto)
 
-  const photoUrl = dto.imageUrl?.trim() || undefined
-  const avatarUrl = dto.avatarPath?.trim() || undefined
+  const photoUrl = dto.imageUrl?.trim()?.replace(/^https?:\/\/biowira\.dpdns\.org/, '') || undefined
+  const avatarUrl = dto.avatarPath?.trim()?.replace(/^https?:\/\/biowira\.dpdns\.org/, '') || undefined
 
   const photoAttr = photoUrl
     ? finalizeImageAttribution(citationInputPrimaryFromAnimalCardDto(dto), photoUrl, 'BioWira image asset')
@@ -302,8 +302,8 @@ export function mapAnimalDetailFromApiDto(dto: AnimalDetailApiDto, backendId: st
   const statusLabel = trimDetailField(dto.conservationLabel)
   const conservationText = trimDetailField(dto.conservationDescription)
 
-  const photoUrl = dto.imageUrl?.trim() || undefined
-  const avatarUrl = dto.avatarPath?.trim() || undefined
+  const photoUrl = dto.imageUrl?.trim()?.replace(/^https?:\/\/biowira\.dpdns\.org/, '') || undefined
+  const avatarUrl = dto.avatarPath?.trim()?.replace(/^https?:\/\/biowira\.dpdns\.org/, '') || undefined
 
   const imageAttr = photoUrl
     ? finalizeImageAttribution(citationInputPhotoFromAnimalDetailDto(dto), photoUrl, 'BioWira image asset')

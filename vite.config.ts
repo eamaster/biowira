@@ -6,11 +6,11 @@ import { BRANDING } from './src/app/branding'
 
 /**
  * Dev-only: browser calls same-origin `/api/...`; Vite forwards to the API origin.
- * Production builds do not use this — CloudFront routes `/api/*` on biowira.dpdns.org.
+ * Production builds do not use this — Cloudflare Pages functions route `/api/*` to Cloudflare Worker.
  */
 import { loadEnv } from 'vite'
 const env = loadEnv(process.env.NODE_ENV || 'development', process.cwd(), '')
-const BIOWIRA_API_ORIGIN = env.VITE_DEV_API_ORIGIN || 'https://api.biowira.dpdns.org'
+const BIOWIRA_API_ORIGIN = env.VITE_DEV_API_ORIGIN || 'https://biowira-api.smah0085.workers.dev'
 
 /** Path prefix for branch deployments (e.g. '/ver1/'). Defaults to '/' for master. */
 const BASE_PATH = process.env.VITE_BASE_PATH || '/'
