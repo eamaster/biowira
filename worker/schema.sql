@@ -270,7 +270,7 @@ CREATE INDEX IF NOT EXISTS idx_session_token ON profile_session(session_token);
 CREATE INDEX IF NOT EXISTS idx_prof_miss_prof ON profile_mission(profile_id);
 
 -- ── Reference Seeds ────────────────────────────────────────────────────────────
-INSERT OR IGNORE INTO animal_group (group_id, group_name) VALUES
+INSERT OR REPLACE INTO animal_group (group_id, group_name) VALUES
   (1, 'Mammals'),
   (2, 'Amphibians'),
   (3, 'Birds'),
@@ -476,36 +476,37 @@ INSERT OR IGNORE INTO threat_detail (threat_detail_id, animal_id, threat_categor
 INSERT OR IGNORE INTO threat_detail (threat_detail_id, animal_id, threat_category_id, explanation, priority) VALUES (31, 34, 6, 'Large farms and gardens are taking over the land where these animals live, leaving them with no place to stay.', 1);
 
 -- Animal Habitats
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (1, 1, 6, 1, '🌳');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (2, 3, 6, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (3, 4, 6, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (4, 6, 6, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (5, 7, 6, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (6, 8, 6, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (7, 9, 6, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (8, 10, 1, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (9, 11, 6, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (10, 12, 6, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (11, 13, 1, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (12, 14, 6, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (13, 15, 6, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (14, 16, 6, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (15, 17, 6, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (16, 18, 6, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (17, 20, 1, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (18, 21, 6, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (19, 22, 1, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (20, 23, 6, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (21, 24, 6, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (22, 25, 6, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (23, 26, 6, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (24, 27, 1, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (25, 29, 1, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (26, 30, 6, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (27, 31, 1, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (28, 32, 6, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (29, 33, 1, 1, '🌿');
-INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (30, 34, 6, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (1, 1, 6, 1, '🌳');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (2, 3, 6, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (3, 4, 6, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (4, 5, 6, 1, '🐸');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (5, 6, 6, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (6, 7, 6, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (7, 8, 6, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (8, 9, 6, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (9, 10, 2, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (10, 11, 6, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (11, 12, 6, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (12, 13, 5, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (13, 14, 6, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (14, 15, 6, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (15, 16, 6, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (16, 17, 6, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (17, 18, 6, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (18, 20, 2, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (19, 21, 6, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (20, 22, 5, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (21, 23, 6, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (22, 24, 6, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (23, 25, 6, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (24, 26, 6, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (25, 27, 2, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (26, 29, 2, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (27, 30, 6, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (28, 31, 5, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (29, 32, 6, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (30, 33, 5, 1, '🌿');
+INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (31, 34, 6, 1, '🌿');
 
 -- Animal Occurrences
 INSERT OR REPLACE INTO animal_occurrence (animal_occurrence_id, animal_id, latitude, longitude, created_at) VALUES (1, 1, 6.0833, 100.9833, '2026-04-04 14:38:25.460101+08');

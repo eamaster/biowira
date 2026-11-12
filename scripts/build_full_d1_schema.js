@@ -304,7 +304,7 @@ CREATE INDEX IF NOT EXISTS idx_session_token ON profile_session(session_token);
 CREATE INDEX IF NOT EXISTS idx_prof_miss_prof ON profile_mission(profile_id);
 
 -- ── Reference Seeds ────────────────────────────────────────────────────────────
-INSERT OR IGNORE INTO animal_group (group_id, group_name) VALUES
+INSERT OR REPLACE INTO animal_group (group_id, group_name) VALUES
   (1, 'Mammals'),
   (2, 'Amphibians'),
   (3, 'Birds'),
@@ -414,13 +414,17 @@ const threatMap = {
 
 const habitatMap = {
   'tropical rainforest': 1,
+  'rainforest': 1,
   'mangrove forests & coastal wetlands': 2,
+  'wetlands': 2,
   'rivers & freshwater lakes': 3,
+  'freshwater': 3,
+  'river': 3,
   'mountain cloud forests': 4,
   'coral reefs & open ocean': 5,
-  'forest': 6,
-  'freshwater': 7,
-  'marine': 8
+  'ocean': 5,
+  'marine': 5,
+  'forest': 6
 };
 
 // 1. Images
@@ -457,12 +461,17 @@ for (const a of dataset.animals) {
 sql += `\n-- Animal Habitats\n`;
 let hdId = 1;
 for (const a of dataset.animals) {
-  if (Array.isArray(a.habitats)) {
-    for (const h of a.habitats) {
-      const catId = habitatMap[String(h.habitatName).toLowerCase()] || 1;
-      const emoji = h.emoji || '🌿';
-      sql += `INSERT OR IGNORE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (${hdId++}, ${a.id}, ${catId}, 1, ${escapeSql(emoji)});\n`;
-    }
+  let habitats = Array.isArray(a.habitats) && a.habitats.length > 0 ? a.habitats : null;
+  // Ensure Larut Torrent Frog has its native mountain forest stream habitat
+  if (!habitats && a.id === 5) {
+    habitats = [{ habitatName: 'Forest', emoji: '🐸' }];
+  } else if (!habitats) {
+    habitats = [{ habitatName: 'Forest', emoji: '🌿' }];
+  }
+  for (const h of habitats) {
+    const catId = habitatMap[String(h.habitatName).toLowerCase()] || 6;
+    const emoji = h.emoji || '🌿';
+    sql += `INSERT OR REPLACE INTO habitat_detail (habitat_detail_id, animal_id, habitat_category_id, priority, emoji) VALUES (${hdId++}, ${a.id}, ${catId}, 1, ${escapeSql(emoji)});\n`;
   }
 }
 
