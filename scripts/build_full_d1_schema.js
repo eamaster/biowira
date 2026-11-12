@@ -471,7 +471,8 @@ sql += `\n-- Animal Occurrences\n`;
 let occId = 1;
 for (const o of dataset.occurrences) {
   for (const item of o.items) {
-    sql += `INSERT OR IGNORE INTO animal_occurrence (animal_occurrence_id, animal_id, latitude, longitude) VALUES (${occId++}, ${o.animalId}, ${item.latitude}, ${item.longitude});\n`;
+    const createdAt = item.createdAt ? escapeSql(item.createdAt) : 'CURRENT_TIMESTAMP';
+    sql += `INSERT OR REPLACE INTO animal_occurrence (animal_occurrence_id, animal_id, latitude, longitude, created_at) VALUES (${occId++}, ${o.animalId}, ${item.latitude}, ${item.longitude}, ${createdAt});\n`;
   }
 }
 

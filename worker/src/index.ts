@@ -221,18 +221,27 @@ const getAnimalByIdHandler = async (c: any, isV2 = false) => {
     ORDER BY td.priority
   `).bind(matchedId).all()
 
+  // Occurrences (authoritative sighting coordinates)
+  const { results: occurrences } = await c.env.DB.prepare(`
+    SELECT latitude, longitude
+    FROM animal_occurrence
+    WHERE animal_id = ?
+    ORDER BY animal_occurrence_id ASC
+  `).bind(matchedId).all()
+
   return c.json({
     ...animal,
     habitats: habitats ?? [],
-    threats: threats ?? []
+    threats: threats ?? [],
+    occurrences: occurrences ?? []
   })
 }
 
 app.get('/api/v1/animals/:id', (c) => getAnimalByIdHandler(c, false))
 app.get('/api/v2/animals/:id', (c) => getAnimalByIdHandler(c, true))
 
-// GET /api/v1/animals/:id/occurrence
-app.get('/api/v1/animals/:id/occurrence', async (c) => {
+// GET /api/v1/animals/:id/occurrence & occurrences (singular and plural, v1 and v2)
+const handleGetOccurrences = async (c: any) => {
   const rawId = c.req.param('id')
   const animalId = parseInt(rawId, 10)
   if (isNaN(animalId)) return c.json([], 200)
@@ -241,11 +250,16 @@ app.get('/api/v1/animals/:id/occurrence', async (c) => {
     SELECT latitude, longitude
     FROM animal_occurrence
     WHERE animal_id = ?
-    ORDER BY created_at DESC
+    ORDER BY animal_occurrence_id ASC
   `).bind(animalId).all()
 
   return c.json(results ?? [])
-})
+}
+
+app.get('/api/v1/animals/:id/occurrence', handleGetOccurrences)
+app.get('/api/v1/animals/:id/occurrences', handleGetOccurrences)
+app.get('/api/v2/animals/:id/occurrence', handleGetOccurrences)
+app.get('/api/v2/animals/:id/occurrences', handleGetOccurrences)
 
 // ── Profile Endpoints ─────────────────────────────────────────────────────────
 
