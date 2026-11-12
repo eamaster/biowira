@@ -1,4 +1,4 @@
-import { Hono } from 'hono'
+import { Hono, type Context } from 'hono'
 import { cors } from 'hono/cors'
 
 type Bindings = {
@@ -7,9 +7,17 @@ type Bindings = {
   ELEVENLABS_API_KEY?: string
   VITE_MAPBOX_ACCESS_TOKEN?: string
   MAPBOX_ACCESS_TOKEN?: string
+  /** Origin of the Cloudflare Pages deployment that hosts /all_assets and /audio/tts (wrangler.toml [vars]). */
+  STATIC_ASSETS_ORIGIN?: string
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
+
+// Helper: build an absolute URL to a static asset hosted on Cloudflare Pages
+function staticAssetUrl(env: Bindings, path: string): string {
+  const origin = (env.STATIC_ASSETS_ORIGIN || 'https://biowira.pages.dev').replace(/\/+$/, '')
+  return `${origin}/${path.replace(/^\/+/, '')}`
+}
 
 // CORS middleware allowing Pages and local preview
 app.use('*', cors({
@@ -1057,7 +1065,7 @@ app.post('/api/v1/Chat/ask', handleChatAsk)
 app.get('/all_assets/:filename', async (c) => {
   const filename = c.req.param('filename')
   try {
-    const res = await fetch(`https://biowira.pages.dev/all_assets/${filename}`)
+    const res = await fetch(staticAssetUrl(c.env, `all_assets/${encodeURIComponent(filename)}`))
     if (res.ok) {
       const bytes = await res.arrayBuffer()
       const contentType = res.headers.get('content-type') || 'image/webp'
@@ -1108,6 +1116,83 @@ function generatePcmWav(durationSeconds = 3, sampleRate = 8000): Uint8Array {
   return new Uint8Array(buffer)
 }
 
+// ── Narration audio resolution ───────────────────────────────────────────────
+// Authentic ElevenLabs narrations are MP3. They live in D1 (tts_audio_cache.audio_content)
+// and, for every catalog animal, as static files on Pages at /audio/tts/{textHash}.mp3.
+
+const AUTHENTIC_NARRATION_MIME = 'audio/mpeg'
+const TEXT_HASH_PATTERN = /^[a-f0-9]{64}$/
+// Bump when the bytes served for an existing hash change, so browsers drop immutable cached copies.
+const NARRATION_AUDIO_VERSION = '2'
+
+function narrationAudioUrl(origin: string, textHash: string): string {
+  return `${origin}/api/v1/tts/audio/${textHash}?v=${NARRATION_AUDIO_VERSION}`
+}
+
+type NarrationAudio = { bytes: Uint8Array; mimeType: string }
+
+// D1 returns BLOB columns as number[] (or ArrayBuffer); normalise to raw bytes.
+// Passing a number[] straight to `new Response()` would serialise it as "73,68,51,..." text.
+function blobToBytes(value: unknown): Uint8Array | null {
+  if (value instanceof Uint8Array) return value
+  if (value instanceof ArrayBuffer) return new Uint8Array(value)
+  if (Array.isArray(value)) return Uint8Array.from(value as number[])
+  return null
+}
+
+// MP3 signature: an 'ID3' tag header or an MPEG audio frame sync word.
+function isMpegAudio(bytes: Uint8Array | null): bytes is Uint8Array {
+  if (!bytes || bytes.byteLength < 1024) return false
+  const hasId3Tag = bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33
+  const hasFrameSync = bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0
+  return hasId3Tag || hasFrameSync
+}
+
+// Fetch the pre-generated narration MP3 from Pages. Rejects the SPA index.html fallback
+// (served with 200 text/html for unknown paths) so it can never poison the D1 cache.
+async function fetchStaticNarration(env: Bindings, textHash: string): Promise<Uint8Array | null> {
+  try {
+    const res = await fetch(staticAssetUrl(env, `audio/tts/${textHash}.mp3`))
+    if (!res.ok || !res.headers.get('content-type')?.startsWith('audio/')) return null
+    const bytes = new Uint8Array(await res.arrayBuffer())
+    return isMpegAudio(bytes) ? bytes : null
+  } catch (err) {
+    console.warn('Static narration fetch error:', err)
+    return null
+  }
+}
+
+// Resolve playable narration audio for a hash: authentic D1 MP3 → static Pages MP3
+// (persisted back to D1) → any other cached audio (e.g. synthetic WAV for uncatalogued text).
+async function resolveNarrationAudio(c: Context<{ Bindings: Bindings }>, textHash: string): Promise<NarrationAudio | null> {
+  if (!TEXT_HASH_PATTERN.test(textHash)) return null
+
+  const row: any = await c.env.DB.prepare(`
+    SELECT audio_content, mime_type FROM tts_audio_cache WHERE text_hash = ? LIMIT 1
+  `).bind(textHash).first()
+  const cachedBytes = blobToBytes(row?.audio_content)
+
+  if (row?.mime_type === AUTHENTIC_NARRATION_MIME && isMpegAudio(cachedBytes)) {
+    return { bytes: cachedBytes, mimeType: AUTHENTIC_NARRATION_MIME }
+  }
+
+  const staticBytes = await fetchStaticNarration(c.env, textHash)
+  if (staticBytes) {
+    if (row) {
+      const persist = c.env.DB.prepare(`
+        UPDATE tts_audio_cache SET audio_content = ?, mime_type = ? WHERE text_hash = ?
+      `).bind(staticBytes, AUTHENTIC_NARRATION_MIME, textHash).run().catch((e) => console.error('Failed to persist narration audio:', e))
+      c.executionCtx.waitUntil(persist)
+    }
+    return { bytes: staticBytes, mimeType: AUTHENTIC_NARRATION_MIME }
+  }
+
+  if (cachedBytes && cachedBytes.byteLength > 44 && row?.mime_type?.startsWith('audio/')) {
+    return { bytes: cachedBytes, mimeType: row.mime_type }
+  }
+  return null
+}
+
 // POST /api/v1/tts/generate
 app.post('/api/v1/tts/generate', async (c) => {
   const body = await c.req.json().catch(() => ({}))
@@ -1132,14 +1217,19 @@ app.post('/api/v1/tts/generate', async (c) => {
     let timings = []
     try { timings = JSON.parse(cached.timings_json || '[]') } catch {}
     if (timings.length > 0) {
+      // Report the MIME type of the audio that will actually be served, upgrading stale
+      // non-MP3 rows (synthetic WAV / poisoned HTML) to the authentic static narration.
+      const mimeType = cached.mime_type === AUTHENTIC_NARRATION_MIME
+        ? AUTHENTIC_NARRATION_MIME
+        : (await resolveNarrationAudio(c, textHash))?.mimeType ?? cached.mime_type
       return c.json({
         textHash,
         voiceId,
         modelId,
         speed: cached.speed ?? speed,
-        mimeType: cached.mime_type || 'audio/mpeg',
+        mimeType,
         cached: true,
-        audioUrl: `${origin}/api/v1/tts/audio/${textHash}`,
+        audioUrl: narrationAudioUrl(origin, textHash),
         timings
       })
     }
@@ -1225,10 +1315,12 @@ app.post('/api/v1/tts/generate', async (c) => {
     mimeType = 'audio/wav'
   }
 
-  // 6. Store in D1 cache so subsequent requests hit cache
+  // 6. Store in D1 cache so subsequent requests hit cache.
+  // Real ElevenLabs audio replaces any row; synthetic WAV never overwrites an existing row.
   try {
+    const insertVerb = mimeType === AUTHENTIC_NARRATION_MIME ? 'INSERT OR REPLACE' : 'INSERT OR IGNORE'
     await c.env.DB.prepare(`
-      INSERT OR REPLACE INTO tts_audio_cache (text_hash, voice_id, model_id, speed, mime_type, audio_content, timings_json)
+      ${insertVerb} INTO tts_audio_cache (text_hash, voice_id, model_id, speed, mime_type, audio_content, timings_json)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).bind(textHash, voiceId, modelId, speed, mimeType, audioBytes, JSON.stringify(timings)).run()
   } catch (dbErr) {
@@ -1242,74 +1334,42 @@ app.post('/api/v1/tts/generate', async (c) => {
     speed,
     mimeType,
     cached: false,
-    audioUrl: `${origin}/api/v1/tts/audio/${textHash}`,
+    audioUrl: narrationAudioUrl(origin, textHash),
     timings
   })
 })
 
-// GET /api/v1/tts/audio/:textHash
+// GET /api/v1/tts/audio/:textHash — streams narration bytes with HTTP Range support so
+// HTMLAudioElement can seek (read-along word taps) without re-downloading.
 app.get('/api/v1/tts/audio/:textHash', async (c) => {
-  const textHash = c.req.param('textHash')
-  const row: any = await c.env.DB.prepare(`
-    SELECT audio_content, mime_type
-    FROM tts_audio_cache
-    WHERE text_hash = ?
-    LIMIT 1
-  `).bind(textHash).first()
+  const audio = await resolveNarrationAudio(c, c.req.param('textHash'))
+  if (!audio) {
+    return c.json({ errorCode: 'NOT_FOUND', message: 'Narration audio not found.' }, 404)
+  }
 
-  if (row && row.audio_content && (row.audio_content.byteLength > 100 || row.audio_content.length > 100)) {
-    return new Response(row.audio_content, {
-      headers: {
-        'Content-Type': row.mime_type || 'audio/mpeg',
-        'Cache-Control': 'public, max-age=31536000, immutable',
-        'Access-Control-Allow-Origin': '*'
-      }
+  const { bytes, mimeType } = audio
+  const total = bytes.byteLength
+  const headers: Record<string, string> = {
+    'Content-Type': mimeType,
+    'Accept-Ranges': 'bytes',
+    'Cache-Control': mimeType === AUTHENTIC_NARRATION_MIME ? 'public, max-age=31536000, immutable' : 'no-cache',
+    'Access-Control-Allow-Origin': '*',
+  }
+
+  const range = /^bytes=(\d*)-(\d*)$/.exec(c.req.header('Range') ?? '')
+  if (range && (range[1] || range[2])) {
+    const start = range[1] ? Number(range[1]) : Math.max(0, total - Number(range[2]))
+    const end = range[1] && range[2] ? Math.min(Number(range[2]), total - 1) : total - 1
+    if (start >= total || start > end) {
+      return new Response(null, { status: 416, headers: { ...headers, 'Content-Range': `bytes */${total}` } })
+    }
+    return new Response(bytes.slice(start, end + 1), {
+      status: 206,
+      headers: { ...headers, 'Content-Range': `bytes ${start}-${end}/${total}`, 'Content-Length': String(end - start + 1) },
     })
   }
 
-  // Fetch authentic ElevenLabs MP3 from local Cloudflare Pages static assets
-  try {
-    const staticRes = await fetch(`https://biowira.pages.dev/audio/tts/${textHash}.mp3`)
-    if (staticRes.ok) {
-      const audioBytes = await staticRes.arrayBuffer()
-      const contentType = staticRes.headers.get('content-type') || 'audio/mpeg'
-      // Cache in D1 for all subsequent calls
-      if (c.executionCtx && typeof c.executionCtx.waitUntil === 'function') {
-        c.executionCtx.waitUntil(
-          c.env.DB.prepare(`
-            UPDATE tts_audio_cache
-            SET audio_content = ?, mime_type = ?
-            WHERE text_hash = ?
-          `).bind(new Uint8Array(audioBytes), contentType, textHash).run().catch(() => {})
-        )
-      } else {
-        await c.env.DB.prepare(`
-          UPDATE tts_audio_cache
-          SET audio_content = ?, mime_type = ?
-          WHERE text_hash = ?
-        `).bind(new Uint8Array(audioBytes), contentType, textHash).run().catch(() => {})
-      }
-      return new Response(audioBytes, {
-        headers: {
-          'Content-Type': contentType,
-          'Cache-Control': 'public, max-age=31536000, immutable',
-          'Access-Control-Allow-Origin': '*'
-        }
-      })
-    }
-  } catch (audioErr) {
-    console.warn('Local static audio fetch error:', audioErr)
-  }
-
-  // Resilient fallback: return valid 3s WAV rather than a 404 so HTMLAudioElement never throws
-  const fallback = generatePcmWav(3)
-  return new Response(fallback, {
-    headers: {
-      'Content-Type': 'audio/wav',
-      'Cache-Control': 'no-cache',
-      'Access-Control-Allow-Origin': '*'
-    }
-  })
+  return new Response(bytes, { headers: { ...headers, 'Content-Length': String(total) } })
 })
 
 export default app

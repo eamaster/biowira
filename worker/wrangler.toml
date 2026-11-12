@@ -4,6 +4,10 @@ compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
 account_id = "767ce92674d0bd477eef696c995faf16"
 
+[vars]
+# Cloudflare Pages origin serving static media (/all_assets/*.webp, /audio/tts/*.mp3)
+STATIC_ASSETS_ORIGIN = "https://biowira.pages.dev"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "biowira-db"

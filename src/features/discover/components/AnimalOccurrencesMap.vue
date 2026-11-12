@@ -23,6 +23,8 @@ const markers: mapboxgl.Marker[] = []
 
 const token = ref<string | undefined>(getMapboxToken())
 const isLoadingToken = ref(false)
+/** Set when WebGL cannot initialise or the GPU drops the context; replaces the map with a fallback. */
+const mapError = ref<string | null>(null)
 
 function close() {
   emit('close')
@@ -37,7 +39,24 @@ function cleanupMap() {
   }
 }
 
+/**
+ * Tear the map down as soon as the GPU loses the WebGL context (e.g. D3D11
+ * "Error allocating VertexShader"). Otherwise Mapbox keeps issuing draw calls on the
+ * dead context, flooding the console with useProgram/getUniformLocation errors.
+ */
+function handleContextLost() {
+  cleanupMap()
+  mapError.value = 'Your device graphics stopped responding while drawing the map.'
+}
+
+async function retryMap() {
+  mapError.value = null
+  await nextTick()
+  if (token.value) renderMap(token.value)
+}
+
 function renderMap(authToken: string) {
+  cleanupMap()
   if (!mapContainer.value || !props.animal) return
 
   mapboxgl.accessToken = authToken
@@ -49,19 +68,28 @@ function renderMap(authToken: string) {
     ? ([occurrences[0].longitude, occurrences[0].latitude] as [number, number])
     : MAPBOX_CONFIG.defaultCenter
 
-  mapInstance = new mapboxgl.Map({
-    container: mapContainer.value,
-    style: MAPBOX_CONFIG.style,
-    projection: MAPBOX_CONFIG.projection,
-    center: initialCenter,
-    zoom: hasOccurrences ? 6 : MAPBOX_CONFIG.defaultZoom,
-    minZoom: MAPBOX_CONFIG.minZoom,
-    maxZoom: MAPBOX_CONFIG.maxZoom,
-    maxBounds: MAPBOX_CONFIG.maxBounds,
-    pitchWithRotate: false,
-    dragRotate: false,
-    attributionControl: false // Keep it clean for pixel UI
-  })
+  try {
+    mapInstance = new mapboxgl.Map({
+      container: mapContainer.value,
+      style: MAPBOX_CONFIG.style,
+      projection: MAPBOX_CONFIG.projection,
+      center: initialCenter,
+      zoom: hasOccurrences ? 6 : MAPBOX_CONFIG.defaultZoom,
+      minZoom: MAPBOX_CONFIG.minZoom,
+      maxZoom: MAPBOX_CONFIG.maxZoom,
+      maxBounds: MAPBOX_CONFIG.maxBounds,
+      pitchWithRotate: false,
+      dragRotate: false,
+      attributionControl: false // Keep it clean for pixel UI
+    })
+  } catch (err) {
+    console.warn('[BioWira map] WebGL map could not be initialised:', err)
+    cleanupMap()
+    mapError.value = 'Your browser or device could not start WebGL graphics for the map.'
+    return
+  }
+
+  mapInstance.on('webglcontextlost', handleContextLost)
 
   // Fit bounds if occurrences span an area
   if (hasOccurrences && occurrences.length > 1 && mapInstance) {
@@ -170,6 +198,15 @@ onBeforeUnmount(() => {
           title="No Data"
           description="No occurrences recorded yet for this animal."
         />
+      </template>
+      <template v-else-if="mapError">
+        <PixelEmptyState
+          emoji="⚠️"
+          title="Map Paused"
+          :description="mapError"
+        >
+          <PixelButton variant="gray" size="sm" @click="retryMap">Try Again</PixelButton>
+        </PixelEmptyState>
       </template>
       <template v-else>
         <div ref="mapContainer" class="map-container"></div>
