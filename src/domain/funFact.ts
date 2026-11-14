@@ -4,6 +4,7 @@
 
 import type { ImageAttribution } from './imageAttribution'
 import { finalizeImageAttribution } from './imageAttribution'
+import { normalizeLocalAssetUrl } from './mediaUrl'
 
 /**
  * Domain model used in Vue templates and stores.
@@ -112,7 +113,7 @@ export function mapFunFactFromApiDto(
     imageAttribution?: ImageAttribution
   },
 ): FunFact {
-  const factUrl = dto.factImageUrl?.trim() || undefined
+  const factUrl = normalizeLocalAssetUrl(dto.factImageUrl)
   const factBlob = {
     factImageAttribution: dto.factImageAttribution,
     factImageCitation: dto.factImageCitation,
@@ -126,7 +127,7 @@ export function mapFunFactFromApiDto(
     ? finalizeImageAttribution(factBlob, factUrl, 'BioWira fact image')
     : undefined
 
-  const animalUrl = animalContext.imageUrl?.trim() || undefined
+  const animalUrl = normalizeLocalAssetUrl(animalContext.imageUrl)
   const animalImageAttribution =
     animalContext.imageAttribution ??
     (animalUrl ? finalizeImageAttribution(undefined, animalUrl, 'BioWira image asset') : undefined)
@@ -174,7 +175,7 @@ export interface FunFactDTO {
 
 /** Map the legacy mock DTO to FunFact. Only used by MockFunFactRepository. */
 export function mapFunFactFromDTO(dto: FunFactDTO): FunFact {
-  const factUrl = dto.image_url?.trim() || undefined
+  const factUrl = normalizeLocalAssetUrl(dto.image_url)
   return {
     id: dto.id,
     animalId: dto.animal_id,

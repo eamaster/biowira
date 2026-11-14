@@ -6,6 +6,7 @@ import { createPinia } from 'pinia'
 
 import App from './App.vue'
 import router from './router'
+import { installChunkAndSwRecovery } from '@/app/chunkRecovery'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useAppBootstrapStore } from '@/stores/appBootstrapStore'
 
@@ -30,6 +31,7 @@ async function init() {
   // mount before bootstrapSession() resolves, the router safely holds
   // navigation until the session is ready.
   app.use(router)
+  installChunkAndSwRecovery(router)
 
   // ── Mount immediately ──────────────────────────────────────────────────────
   // InitialAppLoader is now visible to the user while session + assets load.

@@ -1114,30 +1114,34 @@ app.post('/api/Chat/ask', handleChatAsk)
 app.post('/api/v1/Chat/ask', handleChatAsk)
 
 // ── Asset Proxy ───────────────────────────────────────────────────────────────
-app.get('/all_assets/:filename', async (c) => {
+async function proxyStaticAsset(c: any, folder: 'all_assets' | 'avatars') {
   const filename = c.req.param('filename')
   // Path traversal guard: only permit alphanumeric, dashes, dots, underscores, and url-encoded characters
   if (!filename || filename.includes('..') || !/^[a-zA-Z0-9_\-\.\%]+$/.test(filename)) {
     return c.text('Not found', 404)
   }
   try {
-    const res = await fetch(staticAssetUrl(c.env, `all_assets/${encodeURIComponent(filename)}`))
-    if (res.ok) {
+    const res = await fetch(staticAssetUrl(c.env, `${folder}/${encodeURIComponent(filename)}`))
+    const contentType = res.headers.get('content-type') || ''
+    // Reject SPA HTML fallbacks so missing static assets never masquerade as valid media.
+    if (res.ok && !contentType.toLowerCase().includes('text/html')) {
       const bytes = await res.arrayBuffer()
-      const contentType = res.headers.get('content-type') || 'image/webp'
       return new Response(bytes, {
         headers: {
-          'Content-Type': contentType,
+          'Content-Type': contentType || 'image/webp',
           'Cache-Control': 'public, max-age=31536000, immutable',
-          'Access-Control-Allow-Origin': '*'
-        }
+          'Access-Control-Allow-Origin': '*',
+        },
       })
     }
   } catch (e) {
-    console.error('Proxy all_assets error:', e)
+    console.error(`Proxy ${folder} error:`, e)
   }
   return c.text('Not found', 404)
-})
+}
+
+app.get('/all_assets/:filename', (c) => proxyStaticAsset(c, 'all_assets'))
+app.get('/avatars/:filename', (c) => proxyStaticAsset(c, 'avatars'))
 
 // ── TTS Endpoints ─────────────────────────────────────────────────────────────
 
