@@ -1,6 +1,12 @@
 export function generatePin(): string {
-  // Generate a random number from 0 to 9999
+  // Use cryptographically secure pseudo-random numbers when crypto is available
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const array = new Uint32Array(1);
+    crypto.getRandomValues(array);
+    const pin = array[0] % 10000;
+    return pin.toString().padStart(4, '0');
+  }
+  // Fallback
   const pin = Math.floor(Math.random() * 10000);
-  // Pad with leading zeros to ensure it's exactly 4 digits
   return pin.toString().padStart(4, '0');
 }

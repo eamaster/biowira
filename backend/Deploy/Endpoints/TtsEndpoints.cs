@@ -72,7 +72,7 @@ public static class TtsEndpoints
             logger.LogError(ex, "TTS generate failed for VoiceId={VoiceId}, ModelId={ModelId}", request.VoiceId, request.ModelId);
             return TypedResults.Problem(
                 title: "TTS_GENERATION_FAILED",
-                detail: ex.Message,
+                detail: "An error occurred while generating TTS audio.",
                 statusCode: StatusCodes.Status500InternalServerError);
         }
     }

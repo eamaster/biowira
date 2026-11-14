@@ -27,6 +27,23 @@ app.use('*', cors({
   exposeHeaders: ['Content-Length', 'X-Session-Token'],
 }))
 
+// Global error handler preventing stack trace or internal database exposure
+app.onError((err, c) => {
+  console.error('[BioWira API Error]', err.message)
+  return c.json({
+    errorCode: 'INTERNAL_SERVER_ERROR',
+    message: 'An unexpected internal error occurred.'
+  }, 500)
+})
+
+// Standardised 404 handler
+app.notFound((c) => {
+  return c.json({
+    errorCode: 'NOT_FOUND',
+    message: 'The requested resource was not found.'
+  }, 404)
+})
+
 // Helper: Profile code generator
 const PREFIXES = ['TIG', 'FOX', 'EAG', 'OWL', 'BEA', 'WLF', 'LNX', 'DEE', 'HAR', 'OTR']
 function generateProfileCode(): string {
@@ -79,7 +96,10 @@ async function authenticate(db: D1Database, token: string | null | undefined) {
 app.get('/', (c) => c.json({ name: 'BioWira Serverless API', version: '2.0.0', status: 'healthy' }))
 app.get('/health', (c) => c.json({ status: 'ok' }))
 app.get('/api/v1/config/mapbox-token', (c) => {
-  const token = c.env.VITE_MAPBOX_ACCESS_TOKEN || c.env.MAPBOX_ACCESS_TOKEN || ''
+  const rawToken = (c.env.VITE_MAPBOX_ACCESS_TOKEN || c.env.MAPBOX_ACCESS_TOKEN || '').trim()
+  // Security guard: Only publishable Mapbox tokens (starting with 'pk.') can ever be exposed to the client.
+  // Secret Mapbox tokens (starting with 'sk.') must NEVER be returned to the client.
+  const token = rawToken.startsWith('pk.') ? rawToken : ''
   return c.json({ token })
 })
 
@@ -266,14 +286,21 @@ app.get('/api/v2/animals/:id/occurrences', handleGetOccurrences)
 // POST /api/v1/profiles
 app.post('/api/v1/profiles', async (c) => {
   const body = await c.req.json().catch(() => ({}))
-  const displayName = body.displayName?.trim()
-  const pin = body.pin?.trim()
-  const deviceInfo = body.deviceInfo?.trim() || 'browser'
+  const displayName = typeof body.displayName === 'string' ? body.displayName.trim() : ''
+  const pin = typeof body.pin === 'string' ? body.pin.trim() : ''
+  const deviceInfo = typeof body.deviceInfo === 'string' ? body.deviceInfo.trim() : 'browser'
 
   if (!displayName || !pin) {
     return c.json({
       errorCode: 'INVALID_REQUEST',
       details: { message: 'DisplayName and Pin are required.' }
+    }, 400)
+  }
+
+  if (displayName.length > 50 || pin.length > 20) {
+    return c.json({
+      errorCode: 'INVALID_REQUEST',
+      details: { message: 'DisplayName or Pin exceeds maximum allowed length.' }
     }, 400)
   }
 
@@ -349,15 +376,19 @@ app.delete('/api/v1/profiles/session', async (c) => {
 // POST /api/v1/profiles/restore
 app.post('/api/v1/profiles/restore', async (c) => {
   const body = await c.req.json().catch(() => ({}))
-  const profileCode = body.profileCode?.trim()
-  const pin = body.pin?.trim()
-  const deviceInfo = body.deviceInfo?.trim() || 'restored-device'
+  const profileCode = typeof body.profileCode === 'string' ? body.profileCode.trim() : ''
+  const pin = typeof body.pin === 'string' ? body.pin.trim() : ''
+  const deviceInfo = typeof body.deviceInfo === 'string' ? body.deviceInfo.trim() : 'restored-device'
 
   if (!profileCode || !pin) {
     return c.json({
       errorCode: 'INVALID_REQUEST',
       details: { message: 'ProfileCode and Pin are required.' }
     }, 400)
+  }
+
+  if (profileCode.length > 30 || pin.length > 20) {
+    return c.json({ errorCode: 'INVALID_CREDENTIALS', message: 'Profile code or PIN is incorrect.' }, 401)
   }
 
   const profile: any = await c.env.DB.prepare(`
@@ -1009,12 +1040,19 @@ app.get('/api/v1/badges', async (c) => {
 // POST /api/Chat/ask & POST /api/v1/Chat/ask
 const handleChatAsk = async (c: any) => {
   const body = await c.req.json().catch(() => ({}))
-  const userMessage = body.userMessage?.trim()
-  const animalType = body.animalType?.trim()
-  const sessionId = c.req.query('sessionId') || crypto.randomUUID()
+  const userMessage = typeof body.userMessage === 'string' ? body.userMessage.trim() : ''
+  const animalType = typeof body.animalType === 'string' ? body.animalType.trim() : ''
+  const querySession = c.req.query('sessionId')
+  const sessionId = (typeof querySession === 'string' && /^[a-zA-Z0-9_\-]{1,64}$/.test(querySession))
+    ? querySession
+    : crypto.randomUUID()
 
   if (!userMessage || !animalType) {
     return c.json({ errorCode: 'INVALID_REQUEST', message: 'userMessage and animalType are required' }, 400)
+  }
+
+  if (userMessage.length > 1000 || animalType.length > 60) {
+    return c.json({ errorCode: 'INVALID_REQUEST', message: 'userMessage or animalType exceeds allowed length' }, 400)
   }
 
   const apiKey = c.env.GEMINI_API_KEY
@@ -1078,6 +1116,10 @@ app.post('/api/v1/Chat/ask', handleChatAsk)
 // ── Asset Proxy ───────────────────────────────────────────────────────────────
 app.get('/all_assets/:filename', async (c) => {
   const filename = c.req.param('filename')
+  // Path traversal guard: only permit alphanumeric, dashes, dots, underscores, and url-encoded characters
+  if (!filename || filename.includes('..') || !/^[a-zA-Z0-9_\-\.\%]+$/.test(filename)) {
+    return c.text('Not found', 404)
+  }
   try {
     const res = await fetch(staticAssetUrl(c.env, `all_assets/${encodeURIComponent(filename)}`))
     if (res.ok) {
@@ -1210,12 +1252,18 @@ async function resolveNarrationAudio(c: Context<{ Bindings: Bindings }>, textHas
 // POST /api/v1/tts/generate
 app.post('/api/v1/tts/generate', async (c) => {
   const body = await c.req.json().catch(() => ({}))
-  const text = body.text?.trim()
-  const voiceId = body.voiceId?.trim() || 'rCmVtv8cYU60uhlsOo1M'
-  const modelId = body.modelId?.trim() || 'eleven_multilingual_v2'
+  const text = typeof body.text === 'string' ? body.text.trim() : ''
+  const voiceId = typeof body.voiceId === 'string' && /^[a-zA-Z0-9_\-]+$/.test(body.voiceId.trim())
+    ? body.voiceId.trim()
+    : 'rCmVtv8cYU60uhlsOo1M'
+  const modelId = typeof body.modelId === 'string' && /^[a-zA-Z0-9_\-]+$/.test(body.modelId.trim())
+    ? body.modelId.trim()
+    : 'eleven_multilingual_v2'
   const speed = Number(body.speed ?? 1.0)
 
   if (!text) return c.json({ errorCode: 'INVALID_REQUEST', message: 'Text is required.' }, 400)
+  if (text.length > 2000) return c.json({ errorCode: 'INVALID_REQUEST', message: 'Text must not exceed 2000 characters.' }, 400)
+  if (isNaN(speed) || speed < 0.25 || speed > 4.0) return c.json({ errorCode: 'INVALID_REQUEST', message: 'Speed must be between 0.25 and 4.0.' }, 400)
 
   const textHash = await computeHash(text, voiceId, modelId, speed)
   const origin = new URL(c.req.url).origin

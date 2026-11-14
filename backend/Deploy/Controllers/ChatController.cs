@@ -37,9 +37,9 @@ public sealed class ChatController : ControllerBase
         {
             return BadRequest(ex.Message);
         }
-        catch (InvalidOperationException ex)
+        catch (InvalidOperationException)
         {
-            return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+            return StatusCode(StatusCodes.Status500InternalServerError, "AI chat service encountered an error.");
         }
     }
 }
