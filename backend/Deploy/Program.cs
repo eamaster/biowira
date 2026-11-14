@@ -5,6 +5,7 @@ using Deploy.Interfaces;
 using Deploy.Repositories;
 using Deploy.Services;
 using Deploy.Endpoints;
+using Deploy.Helpers;
 using DotNetEnv;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -56,8 +57,12 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// Add PostgreSQL connection
-var connectionString = builder.Configuration.GetConnectionString("Postgres");
+// Add PostgreSQL connection (resolved from environment or tokenized appsettings)
+var connectionString = ConfigurationHelpers.ResolveSetting(
+    builder.Configuration,
+    "ConnectionStrings:Postgres",
+    "POSTGRES_CONNECTION_STRING",
+    "ConnectionStrings__Postgres");
 builder.Services.AddScoped<NpgsqlConnection>(_ => new NpgsqlConnection(connectionString));
 
 // Register repositories and services

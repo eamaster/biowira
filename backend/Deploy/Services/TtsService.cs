@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Globalization;
 using Deploy.DTOs;
+using Deploy.Helpers;
 using Deploy.Interfaces;
 using Deploy.Models;
 
@@ -42,11 +43,11 @@ public class TtsService : ITtsService
 
         var voiceId = request.VoiceId?.Trim();
         if (string.IsNullOrWhiteSpace(voiceId))
-            voiceId = _configuration["Tts:DefaultVoice"] ?? DefaultVoiceId;
+            voiceId = ConfigurationHelpers.ResolveSetting(_configuration, "Tts:DefaultVoice", "TTS_DEFAULTVOICE") ?? DefaultVoiceId;
 
         var modelId = request.ModelId?.Trim();
         if (string.IsNullOrWhiteSpace(modelId))
-            modelId = _configuration["Tts:ModelId"] ?? DefaultModelId;
+            modelId = ConfigurationHelpers.ResolveSetting(_configuration, "Tts:ModelId", "TTS_MODELID") ?? DefaultModelId;
 
         var speed = request.Speed ?? 1.0m;
         if (speed <= 0m)
@@ -80,11 +81,15 @@ public class TtsService : ITtsService
 
         _logger.LogInformation("TTS cache miss for TextHash={TextHash}; calling ElevenLabs", textHash);
 
-        var apiKey = _configuration["Tts:ElevenLabsApiKey"];
+        var apiKey = ConfigurationHelpers.ResolveSetting(
+            _configuration,
+            "Tts:ElevenLabsApiKey",
+            "ELEVENLABS_API_KEY",
+            "TTS_ELEVENLABSAPIKEY");
         if (string.IsNullOrWhiteSpace(apiKey))
-            throw new InvalidOperationException("Missing ElevenLabs API key in configuration.");
+            throw new InvalidOperationException("TTS service is not configured.");
 
-        var baseUrl = _configuration["Tts:BaseUrl"] ?? DefaultBaseUrl;
+        var baseUrl = ConfigurationHelpers.ResolveSetting(_configuration, "Tts:BaseUrl", "TTS_BASEURL") ?? DefaultBaseUrl;
 
         var generated = await CallElevenLabsAsync(baseUrl, apiKey, text, voiceId, modelId, speed);
         var timingsJson = JsonSerializer.Serialize(generated.Timings, _jsonOptions);

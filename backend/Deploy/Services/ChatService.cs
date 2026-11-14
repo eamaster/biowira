@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
 using Deploy.DTOs;
+using Deploy.Helpers;
 using Deploy.Interfaces;
 
 namespace Deploy.Services;
@@ -36,9 +37,9 @@ public sealed class ChatService : IChatService
         if (string.IsNullOrWhiteSpace(animalType))
             throw new ArgumentException("AnimalType is required.");
 
-        var apiKey = _configuration["Gemini:ApiKey"];
+        var apiKey = ConfigurationHelpers.ResolveSetting(_configuration, "Gemini:ApiKey", "GEMINI_API_KEY");
         if (string.IsNullOrWhiteSpace(apiKey))
-            throw new InvalidOperationException("Missing Gemini API key in configuration (Gemini:ApiKey).");
+            throw new InvalidOperationException("Gemini API service is not configured.");
 
         var session = _sessions.GetOrAdd(sessionId, _ => new ChatSession());
         session.Messages.Add(new ChatTurn("user", userMessage));

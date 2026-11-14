@@ -7,8 +7,13 @@ if (!match) {
   process.exit(1);
 }
 const token = match[1];
-const accountId = '767ce92674d0bd477eef696c995faf16';
-const databaseId = '7da18b7d-5f22-4648-b3af-e3d9022e7fc4';
+const wranglerToml = fs.readFileSync('worker/wrangler.toml', 'utf8');
+const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || wranglerToml.match(/account_id\s*=\s*"([^"]+)"/)?.[1];
+const databaseId = process.env.D1_DATABASE_ID || wranglerToml.match(/database_id\s*=\s*"([^"]+)"/)?.[1];
+if (!accountId || !databaseId) {
+  console.error('Missing Cloudflare accountId or databaseId (set env vars or configure worker/wrangler.toml)');
+  process.exit(1);
+}
 const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/d1/database/${databaseId}/query`;
 
 const sql = fs.readFileSync('worker/schema.sql', 'utf8');

@@ -393,7 +393,6 @@ function getContainRect(
 /**
  * Loads an image for use in a canvas context without tainting it.
  * Fetches remote images as blobs to avoid CORS canvas-taint issues.
- * In dev, CDN URLs are rewritten to the Vite proxy (/_cdn).
  */
 export async function loadImageForCanvas(src: string): Promise<HTMLImageElement> {
   let objectUrl: string | null = null
@@ -401,8 +400,7 @@ export async function loadImageForCanvas(src: string): Promise<HTMLImageElement>
   try {
     // For remote http(s) URLs: fetch as blob → object URL (always same-origin)
     if (/^https?:\/\//i.test(src)) {
-      const proxiedUrl = rewriteCdnUrl(src)
-      const response = await fetch(proxiedUrl)
+      const response = await fetch(src)
       if (!response.ok) throw new Error(`Image fetch failed: ${response.status}`)
       const blob = await response.blob()
       objectUrl = URL.createObjectURL(blob)
@@ -423,18 +421,6 @@ export async function loadImageForCanvas(src: string): Promise<HTMLImageElement>
     if (objectUrl) URL.revokeObjectURL(objectUrl)
     throw err
   }
-}
-
-/** Rewrite known CDN URLs to the Vite dev proxy path so fetch avoids CORS. */
-function rewriteCdnUrl(url: string): string {
-  const CDN_HOST = 'd1ap4awiq83k2q.cloudfront.net'
-  try {
-    const parsed = new URL(url)
-    if (parsed.host === CDN_HOST) {
-      return `/_cdn${parsed.pathname}${parsed.search}`
-    }
-  } catch { /* not a valid URL, use as-is */ }
-  return url
 }
 
 export function importStyledReferenceImage(

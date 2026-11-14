@@ -163,7 +163,9 @@ export function useNarrationAudio(textSource: MaybeRefOrGetter<string>) {
           isPlaying.value = true
           setNarrationActive(true)
           return
-        } catch {}
+        } catch {
+          // SpeechSynthesis fallback failed; fall through to UI error state.
+        }
       }
       isPlaying.value = false
       setNarrationActive(false)

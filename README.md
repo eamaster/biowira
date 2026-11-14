@@ -4,8 +4,7 @@
 
 **Course:** FIT5120 Industry Experience Studio — Monash University  
 **Production URL:** `https://biowira.pages.dev`  
-**Backend API:** `https://biowira.pages.dev/api/v1` (Same-origin via Cloudflare Pages proxy)  
-**Direct Worker API:** `https://biowira-api.smah0085.workers.dev`  
+**Backend API:** `https://biowira.pages.dev/api/v1` (Same-origin via Cloudflare Pages Functions proxy)  
 **Database:** Cloudflare D1 Edge SQL Database (`biowira-db`)
 
 **Stack:** Vue 3 · TypeScript · Vite · Pinia · Vue Router · SCSS (tokens) · Phaser 3 · PWA (vite-plugin-pwa / Workbox) · Cloudflare Pages · Cloudflare Workers (Hono) · Cloudflare D1 · Vitest · Playwright
@@ -177,7 +176,7 @@ The primary persona is a **young Malaysian learner**: large touch targets, simpl
 ## 4. Project Structure
 
 ```
-fit5120_frontend/
+biowira/
 ├── public/
 │   ├── icons/
 │   │   ├── animals/          # Per-animal SVG pixel icons (e.g. malayan-tiger.svg)
@@ -547,7 +546,7 @@ fit5120_frontend/
 ├── tsconfig.json
 ├── tsconfig.app.json          # Strict TS for src/ (excludes test files)
 ├── tsconfig.node.json         # For vite.config.ts / vitest.config.ts
-├── vite.config.ts             # Vue + PWA + dev proxy (/api → biowira-api.smah0085.workers.dev)
+├── vite.config.ts             # Vue + PWA + dev proxy (/api → VITE_DEV_API_ORIGIN or Cloudflare Worker)
 ├── vitest.config.ts           # happy-dom env; merges viteConfig
 ├── vitest.setup.ts            # Forces all VITE_REPO_* = 'mock' for unit tests
 └── README.md
@@ -568,16 +567,16 @@ fit5120_frontend/
 
 ```bash
 git clone <repository-url>
-cd fit5120_frontend
+cd biowira
 npm install
 cp .env.example .env
-# Edit .env — at minimum set VITE_MAPBOX_ACCESS_TOKEN for the Discover map
+# Edit .env — at minimum set VITE_MAPBOX_ACCESS_TOKEN (pk.* public token) for the Discover map
 npm run dev
 ```
 
 Default dev URL: **http://localhost:5173** (Vite auto-increments port if taken).
 
-Vite proxies `/api` → `https://biowira-api.smah0085.workers.dev` in dev so all `apiClient` calls work out of the box without any backend on your machine.
+Vite proxies `/api` → `VITE_DEV_API_ORIGIN` (configured for the Cloudflare Worker in `vite.config.ts`) in dev so all `apiClient` calls work out of the box without running a local backend.
 
 ### Full pre-submit validation
 
@@ -592,7 +591,7 @@ npm run build        # production build must succeed
 
 ## 6. Environment Variables
 
-Copy `.env.example` to `.env`. Vite only injects variables prefixed with `VITE_`.
+Copy `.env.example` to `.env`. Vite only injects variables prefixed with `VITE_`. Never place secret API keys (`GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, Mapbox `sk.*` tokens, or DB credentials) in `.env` or any `VITE_*` variable — they are bundled into public browser code.
 
 ### Core Variables
 
@@ -602,12 +601,12 @@ Copy `.env.example` to `.env`. Vite only injects variables prefixed with `VITE_`
 | `VITE_USE_MOCK` | `false` | Legacy global flag. Per-domain `VITE_REPO_*` always takes precedence. |
 | `VITE_SESSION_ENABLED` | `true` | Set `false` to bypass the `/welcome` redirect guard (e2e tests, Playwright web server). |
 | `VITE_APP_VERSION` | `0.1.0` | App version string exposed in branding. |
-| `VITE_MAPBOX_ACCESS_TOKEN` | _(empty)_ | Required for Discover occurrence map; inject via CI secret in GitHub Actions. |
+| `VITE_MAPBOX_ACCESS_TOKEN` | _(empty)_ | Public `pk.*` Mapbox token for Discover occurrence map; inject via CI secret in GitHub Actions or Worker runtime config. |
 | `VITE_WEATHER_API_BASE_URL` | _(optional)_ | Override the Open-Meteo base URL (defaults to `https://api.open-meteo.com/v1`). |
 | `VITE_BASE_PATH` | `/` | Deployment base path for branch/iteration deployments (e.g. `/ver1/`). |
-| `VITE_DEV_API_ORIGIN` | `https://biowira-api.smah0085.workers.dev` | Override the API host that Vite's dev proxy forwards to. |
+| `VITE_DEV_API_ORIGIN` | _(configured in `vite.config.ts`)_ | Override the API host (`https://<worker-name>.<subdomain>.workers.dev`) that Vite's dev proxy forwards `/api` to. |
 | `VITE_NARRATION_SOURCE` | `api` | `api` = BioWira backend ElevenLabs cached TTS (default); `browser` = Web Speech API explicit dev fallback. Never put ElevenLabs keys in `.env`. |
-| `VITE_TTS_VOICE_ID` | `rCmVtv8cYU60uhlsOo1M` | ElevenLabs voice ID sent to the backend. Backend uses it to key the PostgreSQL TTS cache. |
+| `VITE_TTS_VOICE_ID` | `rCmVtv8cYU60uhlsOo1M` | ElevenLabs voice ID sent to the backend. Backend uses it to key the Cloudflare D1 TTS cache. |
 | `VITE_TTS_MODEL_ID` | `eleven_v3` | ElevenLabs model ID sent to the backend. |
 | `VITE_TTS_SPEED` | `1` | TTS playback speed (positive number; invalid/missing values fall back to `1`). |
 
@@ -1203,8 +1202,8 @@ The AI chatbot gives children a personalised learning companion powered by `anim
 
 ### Architecture
 - `useAnimalChat` composable: manages message history, loading state, and error handling
-- `animalChatService.ts`: thin wrapper around `POST /api/v1/chat` — sends `{ animalId, message, conversationHistory }`
-- The active profile's `animalId` is passed so the backend can respond in-character for that animal species
+- `animalChatService.ts`: thin wrapper around `POST /api/v1/Chat/ask` — sends `{ userMessage, animalType }` with optional `sessionId` query parameter
+- The active profile's animal species (`animalType`) is passed so the backend responds in-character
 
 ### UX rules
 - Maximum **5 conversation turns** stored in local history (prevents context overflow)
@@ -1343,11 +1342,11 @@ All endpoints live under `/api/v1/`. The `apiClient` reads `VITE_API_BASE_URL` a
 |--------|----------|
 | `GET` | `/badges` | All badges (earned + locked) for the active session |
 
-### Chatbot (Google Gemini 1.5 Flash)
+### Chatbot (Google Gemini 2.5 Flash)
 
 | Method | Endpoint | Body | Description |
 |--------|----------|------|-------------|
-| `POST` | `/chat/message` | `{ message, animalName, animalCategory, profileNickname }` | Returns `{ reply }` tailored to the child's age with guardrails and conservation focus. |
+| `POST` | `/Chat/ask` | `{ userMessage, animalType }` | Returns `{ sessionId, animalType, reply }` tailored to the child's age with guardrails and conservation focus. |
 
 ### TTS (ElevenLabs cached narration)
 
@@ -1367,8 +1366,9 @@ All endpoints live under `/api/v1/`. The `apiClient` reads `VITE_API_BASE_URL` a
 7. Word highlighting uses backend `timings` (seconds converted to ms) for precise synchronization.
 
 **Security notes:**
-- No ElevenLabs or Gemini API key exists anywhere in the frontend.
-- Cloudflare Worker securely owns all secret bindings (`GEMINI_API_KEY`, `ELEVENLABS_API_KEY`) and D1 TTS cache.
+- No ElevenLabs, Gemini, or database credentials exist anywhere in the frontend or committed config files (`backend/Deploy/appsettings.json` uses `#{TOKEN}#` placeholders only).
+- Cloudflare Worker securely owns all secret bindings (`GEMINI_API_KEY`, `ELEVENLABS_API_KEY`) and the D1 TTS cache; `GET /api/v1/config/mapbox-token` only exposes publishable `pk.*` Mapbox tokens.
+- Never commit `.env` files, API tokens, passwords, or connection strings to git history.
 - The PWA service worker uses `NetworkOnly` for all `/api/*` routes — audio and chat responses are never cached by the SW.
 
 ---
@@ -1590,7 +1590,7 @@ await page.goto('/games/explorer-rescue-run/result')
 
 ## 26. CI/CD & Deployment
 
-### Cloudflare Serverless Deployment (`.github/workflows/deploy_cloudflare.yml`)
+### Cloudflare Serverless Deployment (`.github/workflows/deploy-cloudflare.yml`)
 
 The primary production CI/CD pipeline triggers on push to `master` and pull requests targeting `master`. It builds and validates both the Worker API and the Vue 3 frontend in parallel before deploying to Cloudflare:
 
@@ -1600,11 +1600,11 @@ push to master ─────────────────────�
               ┌───────────────────────────────┴──────────────────────────────┐
               ▼                                                              ▼
    [Job: Build & Verify Worker]                                 [Job: Build & Verify Frontend]
-   • Node.js 24 setup                                           • Node.js 24 setup
+   • Node.js 22 setup                                           • Node.js 22 setup
    • cd worker && npm ci                                        • npm ci
-   • npm run type-check (tsc --noEmit)                          • npm run build (PWA & precache)
+   • npx tsc --noEmit                                           • npm test && npm run build
    • Deploy Worker via wrangler-action                          • Deploy Pages via wrangler-action
-   (https://biowira-api.smah0085.workers.dev)                   (https://biowira.pages.dev)
+   (Worker API on Cloudflare Workers)                           (https://biowira.pages.dev)
 ```
 
 **Jobs in Pipeline:**
@@ -1616,18 +1616,21 @@ push to master ─────────────────────�
    - Generates Workbox precache manifest for offline operation.
    - Deploys static build to Cloudflare Pages project **`biowira`** using `cloudflare/wrangler-action@v3`.
 
-### Required GitHub Secrets & Variables
+### Required GitHub & Cloudflare Secrets
 
-| Secret / Variable | Type | Description |
+| Secret / Variable | Scope | Description |
 |---|---|---|
-| `CLOUDFLARE_API_TOKEN` | Secret | Cloudflare API token with `Workers Scripts:Edit`, `Pages:Edit`, `D1:Edit` permissions |
-| `CLOUDFLARE_ACCOUNT_ID` | Secret | Cloudflare Account ID (`767ce92674d0bd477eef696c995faf16`) |
-| `VITE_MAPBOX_ACCESS_TOKEN` | Secret | Mapbox access token for occurrence mapping in `/discover` |
-| `VITE_API_BASE_URL` | Variable | API path prefix (defaults to `/api/v1` in production) |
+| `CLOUDFLARE_API_TOKEN` | GitHub Secret | Cloudflare API token with `Workers Scripts:Edit`, `Pages:Edit`, `D1:Edit` permissions |
+| `VITE_MAPBOX_ACCESS_TOKEN` | GitHub Secret | Public `pk.*` Mapbox access token for occurrence mapping in `/discover` |
+| `GEMINI_API_KEY` | Cloudflare Worker Secret | Google Gemini API key (`npx wrangler secret put GEMINI_API_KEY`) |
+| `ELEVENLABS_API_KEY` | Cloudflare Worker Secret | ElevenLabs TTS API key (`npx wrangler secret put ELEVENLABS_API_KEY`) |
+| `VITE_API_BASE_URL` | Workflow Env | API path prefix (defaults to `/api/v1` in production) |
 
-### Cloudflare Pages Routing (`public/_routes.json`)
+> **Security:** Never commit raw Account IDs, API keys, OAuth tokens, or database passwords to documentation or tracked configuration files. Store deployment secrets exclusively in GitHub Actions Secrets and Cloudflare Worker Secrets.
 
-Cloudflare Pages proxies backend traffic directly to the Worker:
+### Cloudflare Pages Routing (`functions/api/[[path]].ts`)
+
+Cloudflare Pages Functions proxy `/api/*` requests directly to the Worker (`public/_routes.json` excludes `/api/*` from static asset caching):
 ```json
 {
   "version": 1,
@@ -1635,16 +1638,8 @@ Cloudflare Pages proxies backend traffic directly to the Worker:
   "exclude": ["/api/*"]
 }
 ```
-* Requests matching `/api/*` are intercepted by the edge Worker without leaving the Cloudflare network.
+* Requests matching `/api/*` are handled by `functions/api/[[path]].ts` and routed to the edge Worker without client-side CORS overhead.
 * Static requests are served directly from Cloudflare Pages CDN edge caches.
-
----
-
-### Legacy AWS Workflow (`.github/workflows/deploy_to_aws.yml`)
-
-Retained as an optional backup pipeline for AWS S3 + CloudFront deployments:
-- Triggers on push to `master`, `iteration1`, `iteration2`, `iteration3`.
-- Syncs `dist/` to S3 bucket and issues CloudFront invalidations.
 
 ---
 
@@ -1795,4 +1790,4 @@ npm run build        # production build succeeds (vue-tsc + vite)
 ---
 
 *Built for FIT5120 Industry Experience Studio — Monash University*  
-*Full-stack serverless platform. Primary backend API running on Cloudflare Workers & D1 at `https://biowira.pages.dev/api/v1` (and direct at `https://biowira-api.smah0085.workers.dev`). Enterprise .NET 9 reference implementation in `/backend`. See `src/repositories/api/` and `src/domain/*Api.dto.ts` for wire-level contract details.*
+*Full-stack serverless platform. Primary backend API running on Cloudflare Workers & D1 via `https://biowira.pages.dev/api/v1`. Enterprise .NET 9 reference implementation in `/backend`. See `src/repositories/api/` and `src/domain/*Api.dto.ts` for wire-level contract details.*

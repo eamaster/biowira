@@ -128,14 +128,6 @@ export default defineConfig({
         changeOrigin: true,
         secure: true,
       },
-      // Proxy CDN images so canvas drawing can import them without CORS issues.
-      // In production, CloudFront should be configured with CORS headers.
-      '/_cdn': {
-        target: 'https://d1ap4awiq83k2q.cloudfront.net',
-        changeOrigin: true,
-        secure: true,
-        rewrite: (path: string) => path.replace(/^\/_cdn/, ''),
-      },
     },
   },
 })

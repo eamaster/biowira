@@ -19,7 +19,7 @@ The backend architecture features a modern, ultra-low-latency **Cloudflare Serve
                                              ▼
                       ┌──────────────────────────────────────────────┐
                       │       Cloudflare Worker API (Hono.js)        │
-                      │     https://biowira-api.smah0085.workers.dev │
+                      │         /api/v1/* via Pages Proxy            │
                       ├──────────────────────┬───────────────────────┤
                       │                      │                       │
                       ▼                      ▼                       ▼
@@ -33,11 +33,11 @@ The backend architecture features a modern, ultra-low-latency **Cloudflare Serve
 |---|---|---|
 | **Runtime** | Cloudflare Workers (V8 Edge Isolates) | .NET 9.0 Runtime / Docker Container |
 | **Framework** | Hono 4.x (TypeScript) | ASP.NET Core 9.0 Minimal APIs (C# 13) |
-| **Database** | Cloudflare D1 (Distributed SQLite at Edge) | PostgreSQL 16 (AWS RDS / Local) |
+| **Database** | Cloudflare D1 (Distributed SQLite at Edge) | PostgreSQL 16 (Local / Containerized — parameterized via env) |
 | **ORM / Data Access** | D1 Prepared SQL Statements | Dapper Micro-ORM + Npgsql |
 | **TTS & Narration** | ElevenLabs Multilingual v2 + D1 Cache | ElevenLabs Multilingual v2 + PostgreSQL Cache |
-| **AI Companion** | Google Gemini 1.5 Flash (via Worker Bindings) | Gemini 1.5 Flash / Bedrock |
-| **Deployment** | GitHub Actions &rarr; Cloudflare Workers & Pages | Docker / AWS ECS / Elastic Beanstalk |
+| **AI Companion** | Google Gemini 2.5 Flash (via Worker Bindings) | Google Gemini 2.5 Flash |
+| **Deployment** | GitHub Actions &rarr; Cloudflare Workers & Pages | Docker / Containerized Host |
 | **Public URL** | `https://biowira.pages.dev/api/v1` | `http://localhost:5215/swagger` |
 
 ---
@@ -106,7 +106,7 @@ Both the Cloudflare Worker API and the ASP.NET Core API strictly adhere to the i
 ### 1. Animals — `/api/v1/animals` & `/api/v2/animals`
 | Method | Route | Description |
 |---|---|---|
-| `GET` | `/api/v1/animals` | List all 15 discovery animals (Mammals, Birds, Reptiles, Amphibians, Marine, Insects) |
+| `GET` | `/api/v1/animals` | List all 31 discovery animals (Mammals, Birds, Reptiles, Amphibians, Marine, Insects) |
 | `GET` | `/api/v2/animals` | Paginated animal card collection (`items`, `totalCount`, `offset`, `limit`) |
 | `GET` | `/api/v1/animals/:id` | Detailed animal profile with habitat, diet, lifespan, conservation status, threats |
 | `GET` | `/api/v2/animals/:id` | Enhanced detail including CC-BY creative commons citations and visual keys |
@@ -155,10 +155,10 @@ Both the Cloudflare Worker API and the ASP.NET Core API strictly adhere to the i
 | `POST` | `/api/v1/tts/generate` | Generate ElevenLabs speech narration with synchronized word timings |
 | `GET` | `/api/v1/tts/audio/:textHash` | Serve cached MP3 audio file |
 
-### 8. AI Animal Companion — `/api/v1/chat`
+### 8. AI Animal Companion — `/api/v1/Chat/ask`
 | Method | Route | Description |
 |---|---|---|
-| `POST` | `/api/v1/chat/message` | Child-safe conversational AI prompt via Google Gemini |
+| `POST` | `/api/v1/Chat/ask` | Child-safe conversational AI prompt via Google Gemini 2.5 Flash |
 
 ---
 
@@ -217,6 +217,12 @@ npx wrangler deploy
 
 ### Running the .NET 9 Backend Locally
 ```bash
+# Provide connection strings and API keys via environment variables or a gitignored root .env file:
+#   POSTGRES_CONNECTION_STRING="Host=localhost;Database=biowira;Username=...;Password=..."
+#   Gemini__ApiKey="..."
+#   Tts__ElevenLabsApiKey="..."
+# Never commit real credentials to Deploy/appsettings.json (it uses #{TOKEN}# placeholders).
+
 # Navigate to backend folder
 cd backend
 
@@ -239,7 +245,7 @@ Swagger UI will be available at `http://localhost:5215/swagger`.
 
 ## 6. CI/CD Automation
 
-Deployment is fully automated using GitHub Actions in [`.github/workflows/deploy_cloudflare.yml`](../.github/workflows/deploy_cloudflare.yml):
-* **Worker API Pipeline:** Automatically checks types (`tsc --noEmit`), packages dependencies, and deploys the worker to Cloudflare using `cloudflare/wrangler-action@v3`.
+Deployment is fully automated using GitHub Actions in [`.github/workflows/deploy-cloudflare.yml`](../.github/workflows/deploy-cloudflare.yml):
+* **Worker API Pipeline:** Automatically checks types (`tsc --noEmit`), installs dependencies, and deploys the worker to Cloudflare using `cloudflare/wrangler-action@v3`.
 * **Frontend Pipeline:** Builds the Vue 3 PWA (`npm run build`) with asset precaching and deploys to Cloudflare Pages.
-* **Authentication:** Managed via GitHub repository secret `CLOUDFLARE_API_TOKEN` and Cloudflare Account ID `767ce92674d0bd477eef696c995faf16`.
+* **Authentication & Secrets:** Managed via GitHub repository secrets (`CLOUDFLARE_API_TOKEN`, `VITE_MAPBOX_ACCESS_TOKEN`) and Cloudflare Worker Secrets (`GEMINI_API_KEY`, `ELEVENLABS_API_KEY`). Never commit credentials, tokens, or raw account IDs to documentation or `appsettings.json`.
