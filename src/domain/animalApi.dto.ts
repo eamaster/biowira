@@ -9,6 +9,7 @@ import type { Animal, AnimalListItem, AnimalOccurrence } from './animal'
 import { HabitatZone } from './enums'
 import { resolveAnimalVisualKey } from './animalVisuals'
 import { finalizeImageAttribution } from './imageAttribution'
+import { normalizeLocalAssetUrl } from './mediaUrl'
 
 // ── List / card ───────────────────────────────────────────────────────────────
 
@@ -114,8 +115,8 @@ export function mapAnimalListItemFromCardApiDto(dto: AnimalCardApiDto): AnimalLi
   const status = conservationCodeToStatus(dto.statusCode)
   const backendId = pickBackendIdFromAnimalCardWire(dto)
 
-  const photoUrl = dto.imageUrl?.trim()?.replace(/^https?:\/\/biowira\.dpdns\.org/, '') || undefined
-  const avatarUrl = dto.avatarPath?.trim()?.replace(/^https?:\/\/biowira\.dpdns\.org/, '') || undefined
+  const photoUrl = normalizeLocalAssetUrl(dto.imageUrl)
+  const avatarUrl = normalizeLocalAssetUrl(dto.avatarPath)
 
   const photoAttr = photoUrl
     ? finalizeImageAttribution(citationInputPrimaryFromAnimalCardDto(dto), photoUrl, 'BioWira image asset')
@@ -302,8 +303,8 @@ export function mapAnimalDetailFromApiDto(dto: AnimalDetailApiDto, backendId: st
   const statusLabel = trimDetailField(dto.conservationLabel)
   const conservationText = trimDetailField(dto.conservationDescription)
 
-  const photoUrl = dto.imageUrl?.trim()?.replace(/^https?:\/\/biowira\.dpdns\.org/, '') || undefined
-  const avatarUrl = dto.avatarPath?.trim()?.replace(/^https?:\/\/biowira\.dpdns\.org/, '') || undefined
+  const photoUrl = normalizeLocalAssetUrl(dto.imageUrl)
+  const avatarUrl = normalizeLocalAssetUrl(dto.avatarPath)
 
   const imageAttr = photoUrl
     ? finalizeImageAttribution(citationInputPhotoFromAnimalDetailDto(dto), photoUrl, 'BioWira image asset')

@@ -12,8 +12,7 @@ import { useProgressStore } from '@/stores/progressStore'
 import { useDrawingStore } from '@/stores/drawingStore'
 import { useRouter } from 'vue-router'
 import DiscoverAnimalIcon from '@/components/ui/DiscoverAnimalIcon.vue'
-import { getDiscoveryAnimalIconUrl } from '@/app/discoveryAnimalIconRegistry'
-import { getAnimalIconUrl } from '@/app/iconRegistry'
+import { resolveAnimalPhoto } from '@/domain/mediaUrl'
 import CitedImage from '@/components/ui/CitedImage.vue'
 import DiscoverStatIcon from '@/components/ui/DiscoverStatIcon.vue'
 import { getDiscoverStatIcon } from '@/app/discoverStatIconRegistry'
@@ -104,45 +103,29 @@ const hasSafeStatus = computed(
   () => props.animal?.conservationStatus === 'least_concern' || props.animal?.conservationStatus === 'near_threatened',
 )
 
-// ── Hero photo vs spirit (local spirit WebP ≠ licensed wildlife photo — no caption on spirit fallback) ──
-const primaryPhotoFailed = ref(false)
-const avatarPhotoFailed = ref(false)
+// ── Hero photo vs spirit (strictly pair caption to actual wildlife photo; never on spirit fallback) ──
+const failedPhotoUrls = ref<Set<string>>(new Set())
 
 watch(
   () => props.animal?.id,
   () => {
-    primaryPhotoFailed.value = false
-    avatarPhotoFailed.value = false
+    failedPhotoUrls.value = new Set()
   },
 )
 
-/** URL for caption-matched wildlife photo — detail `imageUrl`, else avatar fallback, else discovery WebP, else SVG. */
-const wildlifePhotoSrc = computed(() => {
-  const a = props.animal
-  if (!a) return null
-  if (!primaryPhotoFailed.value && a.animalPhotoUrl) return a.animalPhotoUrl
-  if (!avatarPhotoFailed.value && a.avatarPath) return a.avatarPath
-  // Fallback to Vite-bundled discovery registry WebP
-  const discoveryUrl = getDiscoveryAnimalIconUrl({ visualKey: a.visualKey, commonName: a.commonName })
-  if (discoveryUrl) return discoveryUrl
-  // Fallback to registered SVG icon
-  if (a.visualKey && getAnimalIconUrl(a.visualKey)) return getAnimalIconUrl(a.visualKey)
-  return null
-})
+const resolvedPhoto = computed(() => resolveAnimalPhoto(props.animal, failedPhotoUrls.value))
 
-const wildlifePhotoAttribution = computed(() => {
-  const a = props.animal
-  if (!a || !wildlifePhotoSrc.value) return undefined
-  if (!primaryPhotoFailed.value && a.animalPhotoUrl) return a.imageAttribution
-  return a.avatarAttribution ?? a.imageAttribution
-})
+/** URL for wildlife photograph, or null when only the spirit hero should render. */
+const wildlifePhotoSrc = computed(() => resolvedPhoto.value.src)
+
+const wildlifePhotoAttribution = computed(() => resolvedPhoto.value.attribution)
 
 function onWildlifePhotoError() {
-  if (props.animal?.animalPhotoUrl && !primaryPhotoFailed.value) {
-    primaryPhotoFailed.value = true
-  } else if (props.animal?.avatarPath && !avatarPhotoFailed.value) {
-    avatarPhotoFailed.value = true
-  }
+  const currentSrc = resolvedPhoto.value.src
+  if (!currentSrc || failedPhotoUrls.value.has(currentSrc)) return
+  const next = new Set(failedPhotoUrls.value)
+  next.add(currentSrc)
+  failedPhotoUrls.value = next
 }
 
 // ── Stat icons (from centralized registry) ────────────────────────────────────
@@ -423,8 +406,8 @@ function goToQuiz() {
     }
 
     :deep(.cited-image__media) {
+      flex: 1 1 auto;
       min-height: 200px;
-      height: 100%;
       object-fit: cover;
     }
   }

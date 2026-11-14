@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watchEffect } from 'vue'
+import { computed, ref, watch, watchEffect } from 'vue'
 import ImageAttributionCaption from '@/components/ui/ImageAttributionCaption.vue'
 import type { ImageAttribution } from '@/domain/imageAttribution'
 import { warnMissingImageAttribution, hasUsableAttribution } from '@/domain/imageAttribution'
@@ -32,25 +32,31 @@ const emit = defineEmits<{
   error: [evt: Event]
 }>()
 
-function onError(e: Event) {
-  emit('error', e)
-}
-
 /** When captions are enforced, block http(s) images that lack attributable metadata. Local/paths still render — caller chooses showCaption=false for purely decorative blobs. */
 const srcTrimmed = computed(() => props.src?.trim() ?? '')
+
+const hasLoadError = ref(false)
+watch(srcTrimmed, () => {
+  hasLoadError.value = false
+})
+
+function onError(e: Event) {
+  hasLoadError.value = true
+  emit('error', e)
+}
 
 const isRemoteHttpSrc = computed(() => /^https?:\/\//i.test(srcTrimmed.value))
 
 const shouldRenderImg = computed(() => {
   const src = srcTrimmed.value
-  if (!src) return false
+  if (!src || hasLoadError.value) return false
   if (props.showCaption === false) return true
   if (!isRemoteHttpSrc.value) return true
   return hasUsableAttribution(props.attribution ?? undefined)
 })
 
 const showSlotFallback = computed(
-  () => props.fallback === 'slot' && Boolean(srcTrimmed.value) && !shouldRenderImg.value,
+  () => props.fallback === 'slot' && !shouldRenderImg.value,
 )
 
 watchEffect(() => {
@@ -68,7 +74,7 @@ watchEffect(() => {
       class="cited-image__media"
       :class="[`cited-image__media--fit-${objectFit}`]"
     >
-      <slot v-if="(!srcTrimmed || showSlotFallback) && fallback === 'slot'" name="fallback"></slot>
+      <slot v-if="showSlotFallback" name="fallback"></slot>
       <img
         v-else-if="shouldRenderImg"
         class="cited-image__img"

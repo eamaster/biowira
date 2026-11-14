@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ImageAttribution } from '@/domain/imageAttribution'
+import { isSafeHttpUrl } from '@/domain/mediaUrl'
+
+interface AttributionSegment {
+  key: string
+  prefix: string
+  text: string
+  href?: string
+}
 
 const props = withDefaults(
   defineProps<{
@@ -12,16 +20,49 @@ const props = withDefaults(
   { align: 'center', prefix: '' },
 )
 
-const hasContent = computed(() => {
+const segments = computed<AttributionSegment[]>(() => {
   const a = props.attribution
-  if (!a) return false
-  return !!(
-    a.creditLine ||
-    a.author ||
-    a.sourceName ||
-    a.licenseName ||
-    a.title
-  )
+  if (!a || a.creditLine?.trim()) return []
+
+  const list: AttributionSegment[] = []
+  const title = a.title?.trim()
+  const author = a.author?.trim()
+  const sourceName = a.sourceName?.trim()
+  const licenseName = a.licenseName?.trim()
+
+  if (title) {
+    list.push({ key: 'title', prefix: '', text: `"${title}"` })
+  }
+  if (author) {
+    list.push({
+      key: 'author',
+      prefix: list.length ? ' by ' : 'Image by ',
+      text: author,
+      href: isSafeHttpUrl(a.authorUrl) ? a.authorUrl.trim() : undefined,
+    })
+  }
+  if (sourceName) {
+    list.push({
+      key: 'source',
+      prefix: list.length ? ', ' : 'Image source: ',
+      text: sourceName,
+      href: isSafeHttpUrl(a.sourceUrl) ? a.sourceUrl.trim() : undefined,
+    })
+  }
+  if (licenseName) {
+    list.push({
+      key: 'license',
+      prefix: list.length ? ', licensed under ' : 'licensed under ',
+      text: licenseName,
+      href: isSafeHttpUrl(a.licenseUrl) ? a.licenseUrl.trim() : undefined,
+    })
+  }
+  return list
+})
+
+const hasContent = computed(() => {
+  const credit = props.attribution?.creditLine?.trim()
+  return Boolean(credit || segments.value.length > 0)
 })
 
 const cssAlign = computed(() => props.align)
@@ -39,63 +80,17 @@ const textClass = computed(() => [
     :class="`image-attribution-caption-wrap--${cssAlign}`"
   >
     <figcaption :class="textClass">
-      <span v-if="prefix" class="image-attribution-caption__prefix">{{ prefix }}</span>
-
-      <template v-if="attribution?.creditLine">
-        {{ attribution.creditLine }}
-      </template>
-
-      <template v-else-if="attribution">
-        <!-- Title (e.g. "Panthera tigris sumatran subspecies") -->
-        <template v-if="attribution.title">
-          "{{ attribution.title }}"
-        </template>
-
-        <!-- Author -->
-        <template v-if="attribution.author">
-          <template v-if="attribution.title"> by </template>
-          <template v-else>Image by </template>
-          <a
-            v-if="attribution.authorUrl"
-            class="image-attribution-caption__link"
-            :href="attribution.authorUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >{{ attribution.author }}</a>
-          <template v-else>{{ attribution.author }}</template>
-        </template>
-
-        <!-- Source (e.g. "Wikimedia Commons") -->
-        <template v-if="attribution.sourceName">
-          <template v-if="attribution.author || attribution.title">, </template>
-          <template v-else>Image source: </template>
-          <a
-            v-if="attribution.sourceUrl"
-            class="image-attribution-caption__link"
-            :href="attribution.sourceUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >{{ attribution.sourceName }}</a>
-          <template v-else>{{ attribution.sourceName }}</template>
-        </template>
-
-        <!-- License -->
-        <template v-if="attribution.licenseName">
-          <template v-if="attribution.author || attribution.title || attribution.sourceName">, </template>
-          licensed under
-          <a
-            v-if="attribution.licenseUrl"
-            class="image-attribution-caption__link"
-            :href="attribution.licenseUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >{{ attribution.licenseName }}</a>
-          <template v-else>{{ attribution.licenseName }}</template>
-        </template>
-
-        <!-- Trailing period -->
-        <template v-if="attribution.author || attribution.title || attribution.sourceName || attribution.licenseName">.</template>
-      </template>
+      <span v-if="prefix" class="image-attribution-caption__prefix">{{ prefix }}</span><!--
+      --><template v-if="attribution?.creditLine?.trim()">{{ attribution.creditLine.trim() }}</template><!--
+      --><template v-else-if="segments.length"><!--
+        --><template v-for="seg in segments" :key="seg.key">{{ seg.prefix }}<a
+          v-if="seg.href"
+          class="image-attribution-caption__link"
+          :href="seg.href"
+          target="_blank"
+          rel="noopener noreferrer"
+        >{{ seg.text }}</a><template v-else>{{ seg.text }}</template></template><!--
+        -->.</template>
     </figcaption>
   </figure>
 </template>
@@ -130,6 +125,7 @@ const textClass = computed(() => [
   font-weight: 700;
   color: var(--color-text-muted);
   line-height: 1.45;
+  overflow-wrap: anywhere;
 
   &--compact {
     font-size: 11px;

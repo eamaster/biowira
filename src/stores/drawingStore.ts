@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useDiscoverStore } from './discoverStore'
+import { resolveAnimalPhoto } from '@/domain/mediaUrl'
 
 export type DrawingTool = 'brush' | 'pen' | 'pencil' | 'spray' | 'chalk' | 'eraser' | 'fill' | 'shape'
 
@@ -95,13 +96,7 @@ export const useDrawingStore = defineStore('drawing', () => {
 
   const animal = computed(() => useDiscoverStore().selectedAnimal)
 
-  const referenceImageSrc = computed(() => {
-    const a = animal.value
-    if (!a) return null
-    if (a.animalPhotoUrl) return a.animalPhotoUrl
-    if (a.avatarPath) return a.avatarPath
-    return null
-  })
+  const referenceImageSrc = computed(() => resolveAnimalPhoto(animal.value).src)
 
   const canUndo = computed(() => historyStack.value.length > 1)
 

@@ -32,8 +32,8 @@ export const MOCK_ANIMALS: Animal[] = [
     funFact: 'Tiger stripes are like fingerprints! No two are the same!',
     iconEmoji: '🐯',
     /** Mock “hero” URLs for Discover detail citations / E2E (list cards stay spirit icons only). */
-    animalPhotoUrl: 'https://d111111abcdef8.cloudfront.net/media/wildlife-0.webp',
-    imageUrl: 'https://d111111abcdef8.cloudfront.net/media/wildlife-0.webp',
+    animalPhotoUrl: '/all_assets/wildlife-0.webp',
+    imageUrl: '/all_assets/wildlife-0.webp',
     imageAttribution: {
       author: 'PhotoMaster99',
       licenseName: 'CC BY-SA 4.0',
